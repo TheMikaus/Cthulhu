@@ -54,7 +54,6 @@ void AssignParentAndSiblings(MenuSystem* parent, MenuSystem* root)
         currentMenuItem->parentMenu = parent;
         previousMenuItem = currentMenuItem;
         currentMenuItem = currentMenuItem->nextSibling;
-        gfxEndFrame();
     }
 }
 
@@ -1431,9 +1430,28 @@ bool setAllPlayCoins(bool /*unused*/) {
     return true;
 }
 
+void GoBack(MenuSystem** currentRoot, MenuSystem** currentSelectedItem)
+{
+    if ((*currentRoot)->parentMenu)
+    {
+        *currentRoot = *currentSelectedItem = (*currentRoot)->parentMenu;
+        while ((*currentRoot)->previousSibling)
+        {
+            *currentRoot = (*currentRoot)->previousSibling;
+        }
+    }
+}
+
 int main() {
     gfxInitDefault();
-    consoleInit(GFX_TOP, NULL);
+
+    // MIKAUS TODO - Once we are done with new stuff remove bottom screen?
+    PrintConsole topScreen;
+    PrintConsole bottomScreen;
+    consoleInit(GFX_TOP, &topScreen);
+    consoleInit(GFX_BOTTOM, &bottomScreen);
+
+    consoleSelect(&topScreen);
     if (R_FAILED(srvGetServiceHandle(&ptmSysmHandle, "ptm:sysm"))) {
         promptError("SysMenu PTM Service", "Failed to get ptm:sysm service handle.");
     }
@@ -1460,7 +1478,7 @@ int main() {
     // Shared icon cache management
     MenuSystem leafRestoreSharedIconCache { "Restore shared icon cache", "Restore cached icon data from backup?", restoreSharedIconCache, nullptr, nullptr, nullptr, nullptr };
     MenuSystem leafBackupSharedIconCache { "Backup shared icon cache", "Backup shared cached icon data?", backupSharedIconCache, nullptr, nullptr, nullptr, &leafRestoreSharedIconCache };
-    MenuSystem leafUpdateSharedIconCache { "Update shared icon cache", "Update shared cached icon data?", updateSharedIconCache, nullptr, nullptr, nullptr, &leafBackupFriendsList };
+    MenuSystem leafUpdateSharedIconCache { "Update shared icon cache", "Update shared cached icon data?", updateSharedIconCache, nullptr, nullptr, nullptr, &leafBackupSharedIconCache };
     MenuSystem leafClearSharedIconCache { "Clear shared icon cache", "Delete cached icon data? The system will reboot afterwards.", clearSharedIconCache, nullptr, nullptr, nullptr, &leafUpdateSharedIconCache };
 
     // Home menu icon
@@ -1510,7 +1528,7 @@ int main() {
     MenuSystem* currentRoot = topMenuRoot;
     MenuSystem* currentSelectedItem = currentRoot;
     MenuSystem* lastItem = nullptr;
-    const u8 startingDisplayIndex = 2;
+    const u8 startingDisplayIndex = 3;
     u8 currentSelectedDisplayIndex = startingDisplayIndex;
 
     while (aptMainLoop())
@@ -1524,13 +1542,13 @@ int main() {
         // Display the menu header
         const char* menuHeader = (currentRoot->parentMenu) ? currentRoot->parentMenu->text : "Main menu";
         printf("\x1b[%u;0H%-48s", displayIndex++, menuHeader);
-        printf("\x1b[%u;0H==========================================", displayIndex++);
+        printf("\x1b[%u;0H================================================", displayIndex++);
         displayIndex += 2;
 
         // Display current menu
         while (currentMenuItem != nullptr)
         {
-            printf("\x1b[%u;3H%-48s", displayIndex, currentMenuItem->text);
+            printf("\x1b[%u;4H%-48s", displayIndex, currentMenuItem->text);
             if (currentMenuItem == currentSelectedItem)
             {
                 currentSelectedDisplayIndex = displayIndex;
@@ -1542,7 +1560,7 @@ int main() {
 
         // Add an extra line, and display the go back option
         displayIndex++;
-        printf("\x1b[%u;3H%-48s", displayIndex, "Go back.");
+        printf("\x1b[%u;4H%-48s", displayIndex, "Go back.");
 
         if (currentSelectedItem == nullptr)
         {
@@ -1550,14 +1568,17 @@ int main() {
         }
 
         // Put the cursor in front of the selected item
-        printf("\x1b[%u;1H>", currentSelectedDisplayIndex);
+        printf("\x1b[%u;2H>", currentSelectedDisplayIndex);
 
         // print footer
-        printf("\x1b[28;1HPress START to reboot the 3DS.");
-        printf("\x1b[29;1HPress SELECT to toggle auto backup.");
-        printf("\x1b[30;1HAuto backup of icon cache: %s", dobackup ? "ON " : "OFF");
+        printf("\x1b[27;2HPress START to reboot the 3DS.");
+        printf("\x1b[28;2HPress SELECT to toggle auto backup.");
+        printf("\x1b[29;2HAuto backup of icon cache: %s", dobackup ? "ON " : "OFF");
 
-        printf("\x1b[33;1HCurrent -> %-38s]", (currentSelectedItem) ? currentSelectedItem->text : "Go Back");
+        consoleSelect(&bottomScreen);
+        printf("\x1b[1;2HSelected -> %-28s", (currentSelectedItem) ? currentSelectedItem->text : "Go Back");
+        printf("\x1b[2;2HRoot -> %-28s", currentRoot->text);
+        consoleSelect(&topScreen);
 
         hidScanInput();
         u32 kDown = hidKeysDown();
@@ -1565,7 +1586,7 @@ int main() {
         // Handle up/down menu navigation
         if (kDown & KEY_DOWN)
         {
-            printf("\x1b[%u;1H ", currentSelectedDisplayIndex);
+            printf("\x1b[%u;2H ", currentSelectedDisplayIndex);
             if (currentSelectedItem == nullptr) 
             {
                 currentSelectedItem = currentRoot;
@@ -1577,7 +1598,7 @@ int main() {
         }
         else if (kDown & KEY_UP)
         {
-            printf("\x1b[%u;1H ", currentSelectedDisplayIndex);
+            printf("\x1b[%u;2H ", currentSelectedDisplayIndex);
             if (currentSelectedItem == nullptr)
             {
                 currentSelectedItem = lastItem;
@@ -1594,11 +1615,7 @@ int main() {
             // if currentSelectedItem is nullptr then we are on the "go back" item
             if (currentSelectedItem == nullptr)
             {
-                if (currentRoot->parentMenu)
-                {
-                    currentSelectedItem = currentRoot;
-                    currentRoot = currentRoot->parentMenu;
-                }
+                GoBack(&currentRoot, &currentSelectedItem);
                 consoleClear();
             }
             else
@@ -1625,8 +1642,7 @@ int main() {
         }
         else if ((kDown & KEY_B) && (currentRoot->parentMenu))
         {
-            currentSelectedItem = currentRoot;
-            currentRoot = currentRoot->parentMenu;
+            GoBack(&currentRoot, &currentSelectedItem);
             consoleClear();
         }
 
