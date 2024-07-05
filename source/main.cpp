@@ -1175,15 +1175,21 @@ void resetFolderCount() {
     FS_Archive syssave = openSystemSavedata(homemenuID);
 
     res = FSUSER_OpenFile(&save, syssave, (FS_Path)fsMakePath(PATH_ASCII, "/Launcher.dat"), FS_OPEN_WRITE, 0);
-    if (R_FAILED(res)) promptError("Reset Folder Count", "Failed to open HOME Menu savedata.");
-    u8 count = 1;
-    res = FSFILE_Write(save, NULL, 0xD80, &count, sizeof(u8), 0);
-    res = FSFILE_Write(save, NULL, 0xD85, &count, sizeof(u8), 0);
-    printf("Reseting folder count to 1... %s %#lx.\n", R_FAILED(res) ? "ERROR" : "OK", res);
+    if (R_FAILED(res))
+    {
+      promptError("Reset Folder Count", "Failed to open HOME Menu savedata.\nProbably not in test menu.\n");
+    }
+    else
+    {
+        u8 count = 1;
+        res = FSFILE_Write(save, NULL, 0xD80, &count, sizeof(u8), 0);
+        res = FSFILE_Write(save, NULL, 0xD85, &count, sizeof(u8), 0);
+        printf("Reseting folder count to 1... %s %#lx.\n", R_FAILED(res) ? "ERROR" : "OK", res);
 
-    FSFILE_Close(save);
-    FSUSER_ControlArchive(syssave, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
-    FSUSER_CloseArchive(syssave);
+        FSFILE_Close(save);
+        FSUSER_ControlArchive(syssave, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
+        FSUSER_CloseArchive(syssave);
+    }
 
     printf("Press any key to continue.\n");
     waitKey();
@@ -1195,7 +1201,14 @@ void SortAlphabetically()
     Result res;
     Handle save;
 
-    // MIKAUS TODO: Ask in the forums about access this Launcher.dat archive of the Home Menu
+    // 2024-07-04 - Notes
+    // You can't access the home menu's save data because it is currently in use by home menu
+    // Which means you have to access the archive when the home menu isn't running. i.e. godmode9
+    // Copy partition1.bin, or maybe just copy the folder as is and see if we can open it as an archive
+    // This function will parse it for Launcher.dat
+    // Update the file, and then you have to resave it
+    // This function should also back up and restore the Launcher.dat from a partition backup
+
     //     Error returned: c92044e7
     u32 homemenuID[] = {0x00020082, 0x0002008f, 0x00020098, 0x00020098, 0x000200a1, 0x000200a9, 0x000200b1};
     FS_Archive syssave = openSystemSavedata(homemenuID);
@@ -1422,7 +1435,18 @@ void toggleNSMenu() {
     }
     CFG_UpdateConfigSavegame();
 
-    printf("Switched to %s.\n", newMenu);
+    CFG_GetConfigInfoBlk4(0x8, 0x00110001, titleID);
+    bool newTestMenuBit = !memcmp(titleID, testmenuID, 0x8);
+    if (newTestMenuBit == isTestMenu)
+    {
+        printf("Menu did not switch\n");
+        printf("Must have UNITINFO patch\n & test menu installed.\n");
+    }
+    else
+    {
+        printf("Switched to %s.\n", newMenu);
+    }
+
     printf("Press START to reboot.\nAny other key to continue.\n");
     if (waitKey() & KEY_START) APT_HardwareResetAsync();
 }
@@ -1659,10 +1683,18 @@ int main() {
                 }
             }
         }
-        else if ((kDown & KEY_B) && (currentRoot->parentMenu))
+        else if (kDown & KEY_B)
         {
-            GoBack(&currentRoot, &currentSelectedItem);
-            consoleClear();
+            if (currentRoot->parentMenu)
+            {
+                GoBack(&currentRoot, &currentSelectedItem);
+                consoleClear();
+            }
+            else
+            {
+                if (envIsHomebrew()) break;
+                else APT_HardwareResetAsync();
+            }
         }
 
         if (kDown & KEY_SELECT)
