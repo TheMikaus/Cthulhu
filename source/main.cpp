@@ -37,7 +37,7 @@ struct MenuSystem
 {
     const char* text;
     const char* confirmationPrompt;
-    bool (*callback)(bool);
+    void (*callback)();
     MenuSystem* parentMenu;
     MenuSystem* subMenu;
     MenuSystem* previousSibling;
@@ -441,33 +441,25 @@ FS_Archive openSystemSavedata(u32* UniqueID) {
     return archive;
 }
 
-bool clearPlayHistory(bool wait = true) {
+void clearPlayHistory() {
     Result res = PTMSYSM_ClearPlayHistory();
     if (R_FAILED(res)) promptError("Clear Step History", "Failed to clear play history.");
     printf("Clearing play history... %s %#lx.\n", R_FAILED(res) ? "ERROR" : "OK", res);
 
-    if (wait) {
-        printf("Press any key to continue.\n");
-        waitKey();
-    }
-
-    return true;
+    printf("Press any key to continue.\n");
+    waitKey();
 }
 
-bool clearStepHistory(bool wait = true) {
+void clearStepHistory() {
     Result res = PTMSYSM_ClearStepHistory();
     if (R_FAILED(res)) promptError("Clear Step History", "Failed to clear step history.");
     printf("Clearing step history... %s %#lx.\n", R_FAILED(res) ? "ERROR" : "OK", res);
 
-    if (wait) {
-        printf("Press any key to continue.\n");
-        waitKey();
-    }
-
-    return true;
+    printf("Press any key to continue.\n");
+    waitKey();
 }
 
-bool clearSoftwareLibrary(bool wait = true) {
+void clearSoftwareLibrary() {
     Result res;
 
     u32 activitylogID[] = {0x00020202, 0x00020212, 0x00020222, 0x00020222, 0x00020262, 0x00020272, 0x00020282};
@@ -480,12 +472,8 @@ bool clearSoftwareLibrary(bool wait = true) {
     FSUSER_ControlArchive(syssave, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
     FSUSER_CloseArchive(syssave);
 
-    if (wait) {
-        printf("Press any key to continue.\n");
-        waitKey();
-    }
-
-    return true;
+    printf("Press any key to continue.\n");
+    waitKey();
 }
 
 void editLibraryEntry(ENTRY_LIBRARY* library, u16 selected) {
@@ -657,7 +645,7 @@ void editLibraryEntry(ENTRY_LIBRARY* library, u16 selected) {
     library[selected].lastPlayed = getJulianDay(&lastPlayed) - 2451545;
 }
 
-bool editSoftwareLibrary(bool wait = true) {
+void editSoftwareLibrary() {
     Result res;
     Handle pld;
     Handle idb;
@@ -756,24 +744,18 @@ bool editSoftwareLibrary(bool wait = true) {
 
     printf("Press any key to continue.\n");
     waitKey();
-
-    return true;
 }
 
-bool resetDemoPlayCount(bool wait = true) {
+void resetDemoPlayCount() {
     Result res = AM_DeleteAllDemoLaunchInfos();
     if (R_FAILED(res)) promptError("Reset Demo Play Count", "Failed to reset demo play count.");
     printf("Reseting demo play count... %s %#lx.\n", R_FAILED(res) ? "ERROR" : "OK", res);
 
-    if (wait) {
-        printf("Press any key to continue.\n");
-        waitKey();
-    }
-
-    return true;
+    printf("Press any key to continue.\n");
+    waitKey();
 }
 
-bool clearSharedIconCache(bool wait = true) {
+void clearSharedIconCache() {
     Result res;
     u32 sharedID = 0xF000000B;
     FS_Archive shared = openExtdata(&sharedID, ARCHIVE_SHARED_EXTDATA);
@@ -787,12 +769,8 @@ bool clearSharedIconCache(bool wait = true) {
 
     FSUSER_CloseArchive(shared);
 
-    if (wait) {
-        printf("Press any key to continue.\n");
-        waitKey();
-    }
-
-    return true;
+    printf("Press any key to continue.\n");
+    waitKey();
 }
 
 bool backupSharedIconCache(bool wait = true) {
@@ -842,7 +820,11 @@ bool backupSharedIconCache(bool wait = true) {
     return success;
 }
 
-bool updateSharedIconCache(bool /*unused*/) {
+void backupSharedIconCacheMenuCallback() {
+    backupSharedIconCache();
+}
+
+void updateSharedIconCache() {
     Result res;
     Handle idb;
     Handle idbt;
@@ -893,11 +875,9 @@ bool updateSharedIconCache(bool /*unused*/) {
 
     printf("Press any key to continue.\n");
     waitKey();
-
-    return true;
 }
 
-bool restoreSharedIconCache(bool wait = true) {
+void restoreSharedIconCache() {
     Result res;
     Handle idb;
     Handle idbt;
@@ -943,11 +923,9 @@ bool restoreSharedIconCache(bool wait = true) {
 
     printf("Press any key to continue.\n");
     waitKey();
-
-    return true;
 }
 
-bool clearHomemenuIconCache(bool wait = true) {
+void clearHomemenuIconCache() {
     Result res;
     u32 homemenuID[] = {0x00000082, 0x0000008f, 0x00000098, 0x00000098, 0x000000a1, 0x000000a9, 0x000000b1};
     FS_Archive hmextdata = openExtdata(homemenuID, ARCHIVE_EXTDATA);
@@ -961,18 +939,14 @@ bool clearHomemenuIconCache(bool wait = true) {
 
     FSUSER_CloseArchive(hmextdata);
 
-    if (wait) {
-        if (envIsHomebrew()) {
-            printf("Press any key to continue.\n");
-            waitKey();
-        } else {
-            printf("Rebooting...\n");
-            svcSleepThread(2000000000);
-            APT_HardwareResetAsync();
-        }
+    if (envIsHomebrew()) {
+        printf("Press any key to continue.\n");
+        waitKey();
+    } else {
+        printf("Rebooting...\n");
+        svcSleepThread(2000000000);
+        APT_HardwareResetAsync();
     }
-
-    return true;
 }
 
 bool backupHomemenuIconCache(bool wait = true) {
@@ -1022,7 +996,11 @@ bool backupHomemenuIconCache(bool wait = true) {
     return success;
 }
 
-bool updateHomemenuIconCache(bool /*unused*/) {
+void backupHomemenuIconCacheMenuCallback() {
+    backupHomemenuIconCache();
+}
+
+void updateHomemenuIconCache() {
     Result res;
     Handle cache;
     Handle cached;
@@ -1071,11 +1049,9 @@ bool updateHomemenuIconCache(bool /*unused*/) {
 
     printf("Press any key to continue.\n");
     waitKey();
-
-    return true;
 }
 
-bool restoreHomemenuIconCache(bool /*unused*/) {
+void restoreHomemenuIconCache() {
     Result res;
     Handle cached;
     Handle cache;
@@ -1124,8 +1100,6 @@ bool restoreHomemenuIconCache(bool /*unused*/) {
 
     printf("Press any key to continue.\n");
     waitKey();
-
-    return true;
 }
 
 bool unpackRepackHomemenuSoftware(bool repack = false) {
@@ -1167,12 +1141,17 @@ bool unpackRepackHomemenuSoftware(bool repack = false) {
     return true;
 }
 
-bool repackHomemenuSoftware(bool /*unused*/)
+void unpackRepackHomemenuSoftwareMenuCallback()
 {
-    return unpackRepackHomemenuSoftware(true);
+    unpackRepackHomemenuSoftware();
 }
 
-bool removeSoftwareUpdateNag(bool wait = true) {
+void repackHomemenuSoftware()
+{
+    unpackRepackHomemenuSoftware(true);
+}
+
+void removeSoftwareUpdateNag() {
     Result res;
     u32 sharedID = 0xF000000E;
     FS_Archive shared = openExtdata(&sharedID, ARCHIVE_SHARED_EXTDATA);
@@ -1184,15 +1163,11 @@ bool removeSoftwareUpdateNag(bool wait = true) {
     FSUSER_ControlArchive(shared, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
     FSUSER_CloseArchive(shared);
 
-    if (wait) {
-        printf("Press any key to continue.\n");
-        waitKey();
-    }
-
-    return true;
+    printf("Press any key to continue.\n");
+    waitKey();
 }
 
-bool resetFolderCount(bool /*unused*/) {
+void resetFolderCount() {
     Result res;
     Handle save;
 
@@ -1212,11 +1187,64 @@ bool resetFolderCount(bool /*unused*/) {
 
     printf("Press any key to continue.\n");
     waitKey();
-
-    return true;
 }
 
-bool clearGameNotes(bool /*unused*/) {
+// MIKAUS TODO - fix up this function
+void SortAlphabetically()
+{
+    Result res;
+    Handle save;
+
+    // MIKAUS TODO: Ask in the forums about access this Launcher.dat archive of the Home Menu
+    //     Error returned: c92044e7
+    u32 homemenuID[] = {0x00020082, 0x0002008f, 0x00020098, 0x00020098, 0x000200a1, 0x000200a9, 0x000200b1};
+    FS_Archive syssave = openSystemSavedata(homemenuID);
+
+    // This fails due to resource busy. Home Menu has it open
+    // cthulu's documentation states that the resetFolderCount function won't work unless in test mode
+    // it's the only other function that accesses launcher.dat
+    res = FSUSER_OpenFile(&save, syssave, (FS_Path)fsMakePath(PATH_ASCII, "/Launcher.dat"), FS_OPEN_WRITE, 0);
+    /*
+    if (R_FAILED(res)) promptError("Reset Folder Count", "Failed to open HOME Menu savedata.");
+    u8 count = 1;
+    res = FSFILE_Write(save, NULL, 0xD80, &count, sizeof(u8), 0);
+    res = FSFILE_Write(save, NULL, 0xD85, &count, sizeof(u8), 0);
+    printf("Reseting folder count to 1... %s %#lx.\n", R_FAILED(res) ? "ERROR" : "OK", res);
+    */
+
+    // reset cart launcher position
+    /* 
+        from 3dbrew.org
+            0x0	0x1	Launcher.dat format version.
+            0x1	0x1	Padding?
+            0x2	0x2	u16, cart launcher position on the home menu
+            0x4	0x4	Unknown, normally 0x0.
+            0x8	0xB40	360 u64s, list of NAND titleIDs. For an unused entry, the u64 value is ~0(in that case, the corresponding entries at 0xD9A/0x106A for this titleID are not used either). This is used for the icons displayed on the main Home Menu screen.
+            0xB51	0x1	u8, numbers of rows on the home menu, minus 1 (range 0..5) (with the enlarge/reduce option)
+            0xB5C	0x2	u16, position of the cursor on the home menu
+            0xB5E	0x2	u16, horizontal scrolling level (divided by the number of rows to get the actual number of columns hidden) on the home menu
+            0xD80	0x2 or 0x4	u16 or u32, number the next created folder will have (starts at 1)
+            0xD9A	0x2D0	Array of 360 s16 fields, each one corresponds to the titleIDs at the array located at offset 0x8. This is used for icon position, 0x0 for the very first icon, 0x1 for the next one and so on. This is completely linear, no X/Y coordinates. Implemented with the format-version for 4.0.0-X.
+            0x106A	0x168	Array of 360 s8 fields, each one corresponds to the titleIDs at the array located at offset 0x8. This is used for icon position. When an s8 here is -1(which is the normal value), the icon is located with the first chunk of icons(outbuf+0), otherwise the base address is outbuf+0xB40+<s8val*0x1E0>(which is equivalent to 60 icons * s8val). Implemented with the format-version for 4.0.0-X. Corresponds to the id of the folder the icon is in, range -1..59, with -1 meaning not in a folder
+            0x11DC	0x78	Array of 60 s16 fields, corresponding to folders position (with -1 meaning the folder is deleted/not yet created)
+            0x1434	0x3C	Array of 60 u8 fields, the number of rows in each corresponding folder (defaults to 2)
+            0x1470	0x78	Array of 60 u16 fields, the position of the cursor in each corresponding folder (defaults to 0)
+            0x14E8	0x78	Array of 60 u16 fields, the horizontal scroll level in each corresponding folder (divided by the number of rows to get the actual number of columns hidden) (defaults to 0)
+            0x1560	0x7F8	Array of 60 utf-16 strings of length 0x22 (in bytes, so only 0x11 utf-16 characters) (not NULL-terminated), the name of each corresponding folder
+            0x1D58	0xF0	Array of 60 u32, the number of each corresponding folder 
+    */
+
+    FSFILE_Close(save);
+    FSUSER_ControlArchive(syssave, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
+    FSUSER_CloseArchive(syssave);
+
+    printf("Press any key to continue.\n");
+    waitKey();
+
+    return;
+}
+
+void clearGameNotes(){
     Result res;
     char path[16];
 
@@ -1238,11 +1266,9 @@ bool clearGameNotes(bool /*unused*/) {
 
     printf("Press any key to continue.\n");
     waitKey();
-
-    return true;
 }
 
-bool resetEShopBGM(bool /*unused*/) {
+void resetEShopBGM() {
     Result res;
     u32 eshopID[] = {0x00000209, 0x00000219, 0x00000229, 0x00000229, 0x00000269, 0x00000279, 0x00000289};
     FS_Archive eshopext = openExtdata(eshopID, ARCHIVE_EXTDATA);
@@ -1255,11 +1281,9 @@ bool resetEShopBGM(bool /*unused*/) {
 
     printf("Press any key to continue.\n");
     waitKey();
-
-    return true;
 }
 
-bool replaceEShopBGM(bool /*unused*/) {
+void replaceEShopBGM() {
     Result res;
     u32 eshopID[] = {0x00000209, 0x00000219, 0x00000229, 0x00000229, 0x00000269, 0x00000279, 0x00000289};
     FS_Archive eshopext = openExtdata(eshopID, ARCHIVE_EXTDATA);
@@ -1271,7 +1295,7 @@ bool replaceEShopBGM(bool /*unused*/) {
         promptError("Replace eShop BGM", "Source file not found.");
         fclose(newbgm);
         fclose(newxml);
-        return true;
+        return;
     }
 
     fseek(newbgm, 0, SEEK_END);
@@ -1323,11 +1347,9 @@ bool replaceEShopBGM(bool /*unused*/) {
 
     printf("Press any key to continue.\n");
     waitKey();
-
-    return true;
 }
 
-bool changeAcceptedEULAVersion(bool /*unused*/) {
+void changeAcceptedEULAVersion() {
     Result res;
     u8 eulaData[4];
     u8 index = 0;
@@ -1336,7 +1358,7 @@ bool changeAcceptedEULAVersion(bool /*unused*/) {
     printf("Fetching EULA data... %s %#lx.\n", R_FAILED(res) ? "ERROR" : "OK", res);
     if (R_FAILED(res)) {
         promptError("Change Accepted EULA Version", "Failed to get EULA data.");
-        return true;
+        return;
     }
     consoleClear();
 
@@ -1370,10 +1392,10 @@ bool changeAcceptedEULAVersion(bool /*unused*/) {
     printf("Press any key to continue.\n");
     waitKey();
 
-    return true;
+    return;
 }
 
-bool toggleNSMenu(bool /*unused*/) {
+void toggleNSMenu() {
     Result res;
     u8 region = 0;
 
@@ -1391,7 +1413,7 @@ bool toggleNSMenu(bool /*unused*/) {
     char msg[100];
     sprintf(msg, "Switch current menu to %s?", newMenu);
 
-    if (!promptConfirm("Toggle NS Menu", msg)) return true;
+    if (!promptConfirm("Toggle NS Menu", msg)) return;
 
     if (isTestMenu) {
         CFG_SetConfigInfoBlk8(0x8, 0x00110001, homemenuID);
@@ -1403,11 +1425,9 @@ bool toggleNSMenu(bool /*unused*/) {
     printf("Switched to %s.\n", newMenu);
     printf("Press START to reboot.\nAny other key to continue.\n");
     if (waitKey() & KEY_START) APT_HardwareResetAsync();
-
-    return true;
 }
 
-bool setAllPlayCoins(bool /*unused*/) {
+void setAllPlayCoins() {
     Handle gamecoin;
     u32 sharedID = 0xF000000B;
     FS_Archive shared = openExtdata(&sharedID, ARCHIVE_SHARED_EXTDATA);
@@ -1415,7 +1435,7 @@ bool setAllPlayCoins(bool /*unused*/) {
     Result res = FSUSER_OpenFile(&gamecoin, shared, (FS_Path)fsMakePath(PATH_ASCII, "/gamecoin.dat"), FS_OPEN_READ | FS_OPEN_WRITE, 0);
     if (R_FAILED(res)) {
         promptError("Maximize Play Coin Count", "Failed to open gamecoin.dat file.");
-        return true;
+        return;
     }
     printf("Opening file \"gamecoin.dat\"... %s %#lx.\n", R_FAILED(res) ? "ERROR" : "OK", res);
 
@@ -1426,8 +1446,6 @@ bool setAllPlayCoins(bool /*unused*/) {
 
     printf("Press any key to continue.\n");
     waitKey();
-
-    return true;
 }
 
 void GoBack(MenuSystem** currentRoot, MenuSystem** currentSelectedItem)
@@ -1477,20 +1495,20 @@ int main() {
 
     // Shared icon cache management
     MenuSystem leafRestoreSharedIconCache { "Restore shared icon cache", "Restore cached icon data from backup?", restoreSharedIconCache, nullptr, nullptr, nullptr, nullptr };
-    MenuSystem leafBackupSharedIconCache { "Backup shared icon cache", "Backup shared cached icon data?", backupSharedIconCache, nullptr, nullptr, nullptr, &leafRestoreSharedIconCache };
+    MenuSystem leafBackupSharedIconCache { "Backup shared icon cache", "Backup shared cached icon data?", backupSharedIconCacheMenuCallback, nullptr, nullptr, nullptr, &leafRestoreSharedIconCache };
     MenuSystem leafUpdateSharedIconCache { "Update shared icon cache", "Update shared cached icon data?", updateSharedIconCache, nullptr, nullptr, nullptr, &leafBackupSharedIconCache };
     MenuSystem leafClearSharedIconCache { "Clear shared icon cache", "Delete cached icon data? The system will reboot afterwards.", clearSharedIconCache, nullptr, nullptr, nullptr, &leafUpdateSharedIconCache };
 
     // Home menu icon
     MenuSystem leafRestoreHomeMenuIconCache { "Restore HOME Menu icon cache", "Restore cached icon data from backup?", restoreHomemenuIconCache, nullptr, nullptr, nullptr, nullptr };
-    MenuSystem leafBackupHomeMenuIconCache { "Backup HOME Menu icon cache", "Backup HOME Menu cached icon data?", backupHomemenuIconCache, nullptr, nullptr, nullptr, &leafRestoreHomeMenuIconCache };
+    MenuSystem leafBackupHomeMenuIconCache { "Backup HOME Menu icon cache", "Backup HOME Menu cached icon data?", backupHomemenuIconCacheMenuCallback, nullptr, nullptr, nullptr, &leafRestoreHomeMenuIconCache };
     MenuSystem leafUpdateHomeMenuIconCache { "Update HOME Menu icon cache", "Update HOME Menu cached icon data?", updateHomemenuIconCache, nullptr, nullptr, nullptr, &leafBackupHomeMenuIconCache };
     MenuSystem leafClearHomeMenuIconCache { "Clear HOME Menu icon cache", "Delete cached icon data? The system will reboot afterwards.", clearHomemenuIconCache, nullptr, nullptr, nullptr, &leafUpdateHomeMenuIconCache };
     
     // Home menu software
-    MenuSystem leafRemoveSoftwareUpdateNag { "Remove software update nag", "Delete automatic system update data?", removeSoftwareUpdateNag, nullptr, nullptr, nullptr, nullptr };
-    MenuSystem leafRepackAllHomeMenuSoftware { "Repack all HOME Menu software", "Remove update nag of all installed software?", repackHomemenuSoftware, nullptr, nullptr, nullptr, &leafRemoveSoftwareUpdateNag };
-    MenuSystem leafUnwrapAllHomeMenuSoftware { "Unwrap all HOME Menu software", "Gift-wrap all software on HOME Menu?", unpackRepackHomemenuSoftware, nullptr, nullptr, nullptr, &leafRepackAllHomeMenuSoftware };
+    MenuSystem leafRemoveSoftwareUpdateNag { "Remove software update nag", "Remove update nag of all installed software?", removeSoftwareUpdateNag, nullptr, nullptr, nullptr, nullptr };
+    MenuSystem leafRepackAllHomeMenuSoftware { "Repack all HOME Menu software", "Gift-wrap all software on HOME Menu?", repackHomemenuSoftware, nullptr, nullptr, nullptr, &leafRemoveSoftwareUpdateNag };
+    MenuSystem leafUnwrapAllHomeMenuSoftware { "Unwrap all HOME Menu software", "Unwrap all gift-wrapped software on HOME Menu?", unpackRepackHomemenuSoftwareMenuCallback, nullptr, nullptr, nullptr, &leafRepackAllHomeMenuSoftware };
     MenuSystem leafResetFolderCount { "Reset folder count", "Reset folder count back to 1?", resetFolderCount, nullptr, nullptr, nullptr, &leafUnwrapAllHomeMenuSoftware };
     MenuSystem leafResetDemoPlayCount { "Reset demo play count", "Reset play count on all installed demos?", resetDemoPlayCount, nullptr, nullptr, nullptr, &leafResetFolderCount };
 
@@ -1503,7 +1521,7 @@ int main() {
     MenuSystem leafToggleHOMETestMenu { "Toggle HOME/Test Menu", nullptr, toggleNSMenu, nullptr, nullptr, nullptr, &leafChangeAcceptedEULAVersion };
 
     // Sorting (new)
-    MenuSystem leafSortAlphabetically { "Sort Alphabetically", nullptr, /*callback*/nullptr, nullptr, nullptr, nullptr, nullptr};
+    MenuSystem leafSortAlphabetically { "Sort Alphabetically", nullptr, SortAlphabetically, nullptr, nullptr, nullptr, nullptr};
 
     // Main Menu
     MenuSystem mainMiscellaneous { "Miscellaneous", nullptr, nullptr, nullptr, &leafToggleHOMETestMenu, nullptr, nullptr };
@@ -1633,7 +1651,8 @@ int main() {
                     {
                         if (currentSelectedItem->callback)
                         {
-                            currentSelectedItem->callback(true);
+                            // Fix this for unwrap (it needs a false)
+                            currentSelectedItem->callback();
                         }
                         consoleClear();
                     }
