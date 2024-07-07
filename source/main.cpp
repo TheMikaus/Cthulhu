@@ -1208,6 +1208,16 @@ void SortAlphabetically()
     // This function will parse it for Launcher.dat
     // Update the file, and then you have to resave it
     // This function should also back up and restore the Launcher.dat from a partition backup
+    // Ideas
+    // - If there is no /3ds/Cthulu/homemenuID[region] folder then create gm9 script that will copy it?
+    // - If there is a /3ds/Cthulu/homemenuID[region] create a gm9 script to put it back
+    // - See if we can use FSUSER_OpenArchive on the title once we've copied it
+    // - Enable Game Patching in luma might allow us to do the ips
+    // - Enable Game Patching in luma - does romfs include Launcher.dat
+    // ? What are firms that can load with Rosalina, and what do I do with them?
+    // ? Is Fastbook3ds something I should look into? like use fastbook to load into a state where I can modify the contents?
+    // ? I think Rosalina/Luma's loader should be able to auto patch HomeMenu
+    // ? not related: this is interesting though - https://github.com/hax0kartik/rehid/tree/master/source
 
     //     Error returned: c92044e7
     u32 homemenuID[] = {0x00020082, 0x0002008f, 0x00020098, 0x00020098, 0x000200a1, 0x000200a9, 0x000200b1};
@@ -1409,6 +1419,8 @@ void changeAcceptedEULAVersion() {
 }
 
 void toggleNSMenu() {
+    // MIKAUS QUESTION: Can you have it switch to a different application id?
+    //                : Can I have it boot my own installed title?
     Result res;
     u8 region = 0;
 
@@ -1602,7 +1614,7 @@ int main() {
 
         // Add an extra line, and display the go back option
         displayIndex++;
-        printf("\x1b[%u;4H%-48s", displayIndex, "Go back.");
+        printf("\x1b[%u;4H%-48s", displayIndex, currentRoot->parentMenu ? "Go back." : "Exit Application");
 
         if (currentSelectedItem == nullptr)
         {
