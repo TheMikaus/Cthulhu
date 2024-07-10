@@ -1218,6 +1218,10 @@ void SortAlphabetically()
     // ? Is Fastbook3ds something I should look into? like use fastbook to load into a state where I can modify the contents?
     // ? I think Rosalina/Luma's loader should be able to auto patch HomeMenu
     // ? not related: this is interesting though - https://github.com/hax0kartik/rehid/tree/master/source
+    // Websites - https://www.3dbrew.org/wiki/Home_Menu#Home_Menu_NAND_savedata
+    //          - https://www.3dbrew.org/wiki/System_SaveData
+    //          - https://www.3dbrew.org/wiki/Filesystem_services_PXI
+    // Other repos to check - Luma3ds and Libctru
 
     //     Error returned: c92044e7
     u32 homemenuID[] = {0x00020082, 0x0002008f, 0x00020098, 0x00020098, 0x000200a1, 0x000200a9, 0x000200b1};
