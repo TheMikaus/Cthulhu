@@ -24,6 +24,33 @@
 bool dobackup = true;
 
 Handle ptmSysmHandle;
+PrintConsole topScreen;
+PrintConsole bottomScreen;
+
+void clearBottomConsole()
+{
+    consoleSelect(&bottomScreen);
+    consoleClear();
+    consoleSelect(&topScreen);
+}
+
+#define RESET   "\033[0m"
+#define BLACK   "\033[30m"      /* Black */
+#define RED     "\033[31m"      /* Red */
+#define GREEN   "\033[32m"      /* Green */
+#define YELLOW  "\033[33m"      /* Yellow */
+#define BLUE    "\033[34m"      /* Blue */
+#define MAGENTA "\033[35m"      /* Magenta */
+#define CYAN    "\033[36m"      /* Cyan */
+#define WHITE   "\033[37m"      /* White */
+#define BOLDBLACK   "\033[1m\033[30m"      /* Bold Black */
+#define BOLDRED     "\033[1m\033[31m"      /* Bold Red */
+#define BOLDGREEN   "\033[1m\033[32m"      /* Bold Green */
+#define BOLDYELLOW  "\033[1m\033[33m"      /* Bold Yellow */
+#define BOLDBLUE    "\033[1m\033[34m"      /* Bold Blue */
+#define BOLDMAGENTA "\033[1m\033[35m"      /* Bold Magenta */
+#define BOLDCYAN    "\033[1m\033[36m"      /* Bold Cyan */
+#define BOLDWHITE   "\033[1m\033[37m"      /* Bold White */
 
 #pragma pack(1)
 
@@ -646,7 +673,6 @@ void editLibraryEntry(ENTRY_LIBRARY* library, u16 selected) {
 }
 
 void editSoftwareLibrary() {
-    Result res;
     Handle pld;
     Handle idb;
     Handle idbt;
@@ -657,12 +683,23 @@ void editSoftwareLibrary() {
     u32 sharedID = 0xF000000B;
     FS_Archive shared = openExtdata(&sharedID, ARCHIVE_SHARED_EXTDATA);
 
-    res = FSUSER_OpenFile(&idb, shared, (FS_Path)fsMakePath(PATH_ASCII, "/idb.dat"), FS_OPEN_READ | FS_OPEN_WRITE, 0);
-    printf("Opening file \"idb.dat\"... %s %#lx.\n", R_FAILED(res) ? "ERROR" : "OK", res);
-    res = FSUSER_OpenFile(&idbt, shared, (FS_Path)fsMakePath(PATH_ASCII, "/idbt.dat"), FS_OPEN_READ | FS_OPEN_WRITE, 0);
-    printf("Opening file \"idbt.dat\"... %s %#lx.\n", R_FAILED(res) ? "ERROR" : "OK", res);
-    res = FSUSER_OpenFile(&pld, syssave, (FS_Path)fsMakePath(PATH_ASCII, "/pld.dat"), FS_OPEN_READ | FS_OPEN_WRITE, 0);
-    printf("Opening file \"pld.dat\"... %s %#lx.\n", R_FAILED(res) ? "ERROR" : "OK", res);
+
+    consoleSelect(&bottomScreen);
+    consoleClear();
+    Result idbRes = FSUSER_OpenFile(&idb, shared, (FS_Path)fsMakePath(PATH_ASCII, "/idb.dat"), FS_OPEN_READ | FS_OPEN_WRITE, 0);
+    printf("File \"idb.dat \"... %s %#lx.\n", R_FAILED(idbRes) ? "ERROR" : "OK   ", idbRes);
+    Result idbtRes = FSUSER_OpenFile(&idbt, shared, (FS_Path)fsMakePath(PATH_ASCII, "/idbt.dat"), FS_OPEN_READ | FS_OPEN_WRITE, 0);
+    printf("File \"idbt.dat\"... %s %#lx.\n", R_FAILED(idbtRes) ? "ERROR" : "OK   ", idbtRes);
+    Result pldRes = FSUSER_OpenFile(&pld, syssave, (FS_Path)fsMakePath(PATH_ASCII, "/pld.dat"), FS_OPEN_READ | FS_OPEN_WRITE, 0);
+    printf("File \"pld.dat \"... %s %#lx.\n", R_FAILED(pldRes) ? "ERROR" : "OK   ", pldRes);
+    consoleSelect(&topScreen);
+
+    if (R_FAILED(idbRes) || R_FAILED(idbtRes) || R_FAILED(pldRes))
+    {
+        promptError("Edit Software Library", BOLDRED "Could not open a necessary file." RESET);
+        clearBottomConsole();
+        return;
+    }
 
     ENTRY_LIBRARY* library = getActivityEntryList(&pld);
     ENTRY_DATA* entries = getSharedEntryList(&idbt);
@@ -726,7 +763,7 @@ void editSoftwareLibrary() {
 
     if (promptConfirm("Edit Software Library", "Save changes?")) {
         u32 wsize = 0;
-        res = FSFILE_Write(pld, &wsize, ENTRY_LIBRARY_START, library, ENTRY_LIBRARY_COUNT * sizeof(ENTRY_LIBRARY), 0);
+        Result res = FSFILE_Write(pld, &wsize, ENTRY_LIBRARY_START, library, ENTRY_LIBRARY_COUNT * sizeof(ENTRY_LIBRARY), 0);
         printf("\x1b[15;0HWriting data to savefile... %s %#lx.\n", R_FAILED(res) ? "ERROR" : "OK", res);
     }
 
@@ -1500,8 +1537,6 @@ int main() {
     gfxInitDefault();
 
     // MIKAUS TODO - Once we are done with new stuff remove bottom screen?
-    PrintConsole topScreen;
-    PrintConsole bottomScreen;
     consoleInit(GFX_TOP, &topScreen);
     consoleInit(GFX_BOTTOM, &bottomScreen);
 
