@@ -32,3 +32,8 @@ Future Features:
 Obs.:
 - Because HOME Menu doesn't allow accessing its icon cache while it's running, Cthulhu runs on extended memory mode.
 - Clearing or updating HOME Menu icon cache may uninstall sdiconhax (a.k.a menuhax 3.x).
+
+
+New Features/Goals:
+- Allow sorting of home menu icons.
+- Allow scripted sorting of home menu icons?
