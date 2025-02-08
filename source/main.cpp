@@ -12,9 +12,6 @@
 #define ENTRY_LIBRARY_COUNT 0x100
 #define ENTRY_HISTORY_COUNT 0x11D28
 
-#define SUBMENU_COUNT 7
-#define MAX_OPTIONS_PER_SUBMENU 10
-
 #define VERSION_MAJOR 1
 #define VERSION_MINOR 3
 #define VERSION_MICRO 5
@@ -60,29 +57,7 @@ void gfxEndFrame() {
     gspWaitForVBlank();
 }
 
-struct MenuSystem
-{
-    const char* text;
-    const char* confirmationPrompt;
-    void (*callback)();
-    MenuSystem* parentMenu;
-    MenuSystem* subMenu;
-    MenuSystem* previousSibling;
-    MenuSystem* nextSibling;
-};
-
-void AssignParentAndSiblings(MenuSystem* parent, MenuSystem* root)
-{
-    MenuSystem* currentMenuItem = root;
-    MenuSystem* previousMenuItem = nullptr;
-    while (currentMenuItem)
-    {
-        currentMenuItem->previousSibling = previousMenuItem;
-        currentMenuItem->parentMenu = parent;
-        previousMenuItem = currentMenuItem;
-        currentMenuItem = currentMenuItem->nextSibling;
-    }
-}
+#include "menu_system.h"
 
 typedef struct {
     u16 shortDescription[0x40];
@@ -241,36 +216,6 @@ bool pathExists(char* path) {
     if (dir != NULL) result = true;
     closedir(dir);
     return result;
-}
-
-u32 waitKey() {
-    u32 kDown = 0;
-    while (aptMainLoop()) {
-        hidScanInput();
-        kDown = hidKeysDown();
-        if (kDown) break;
-        gfxEndFrame();
-    }
-    consoleClear();
-    return kDown;
-}
-
-bool promptConfirm(const char* title, const char* message) {
-    consoleClear();
-    printf("\x1b[1;0H\x1b[30;47m%-50s", " ");
-    printf("\x1b[1;%uH%s\x1b[0;0m", (25 - (strlen(title) >> 1)), title);
-    printf("\x1b[14;%uH%s", (25 - (strlen(message) >> 1)), message);
-    printf("\x1b[16;14H\x1b[32m(A)\x1b[37m Confirm / \x1b[31m(B)\x1b[37m Cancel");
-    u32 kDown = waitKey();
-    return (kDown & KEY_A);
-}
-
-void promptError(const char* title, const char* message) {
-    consoleClear();
-    printf("\x1b[1;0H\x1b[30;47m%-50s", " ");
-    printf("\x1b[1;%uH%s\x1b[0;0m", (25 - (strlen(title) >> 1)), title);
-    printf("\x1b[14;%uH%s", (25 - (strlen(message) >> 1)), message);
-    waitKey();
 }
 
 u64* getTitleList(u64* count) {
@@ -682,7 +627,6 @@ void editSoftwareLibrary() {
 
     u32 sharedID = 0xF000000B;
     FS_Archive shared = openExtdata(&sharedID, ARCHIVE_SHARED_EXTDATA);
-
 
     consoleSelect(&bottomScreen);
     consoleClear();
@@ -1525,18 +1469,6 @@ void setAllPlayCoins() {
     waitKey();
 }
 
-void GoBack(MenuSystem** currentRoot, MenuSystem** currentSelectedItem)
-{
-    if ((*currentRoot)->parentMenu)
-    {
-        *currentRoot = *currentSelectedItem = (*currentRoot)->parentMenu;
-        while ((*currentRoot)->previousSibling)
-        {
-            *currentRoot = (*currentRoot)->previousSibling;
-        }
-    }
-}
-
 int main() {
     gfxInitDefault();
 
@@ -1558,196 +1490,85 @@ int main() {
     // Define Leaf nodes of the menu
     // Activity log managerment menu
     const char* genericBackupConfirmation = "This can't be undown w/o a backup. Are you sure?";
-    MenuSystem leafEditSoftwareLibrary { "Edit software library", nullptr, editSoftwareLibrary, nullptr, nullptr, nullptr, nullptr };
-    MenuSystem leafClearSoftwareLibrary { "Clear software library", genericBackupConfirmation, clearSoftwareLibrary, nullptr, nullptr, nullptr, &leafEditSoftwareLibrary };
-    MenuSystem leafClearStepHistory { "Clear step history", genericBackupConfirmation, clearStepHistory, nullptr, nullptr, nullptr, &leafClearSoftwareLibrary };
-    MenuSystem leafClearPlayHistory { "Clear play history", genericBackupConfirmation, clearPlayHistory, nullptr, nullptr, nullptr, &leafClearStepHistory };
+    MenuSystemNode leafEditSoftwareLibrary { "Edit software library", nullptr, editSoftwareLibrary, nullptr, nullptr, nullptr, nullptr };
+    MenuSystemNode leafClearSoftwareLibrary { "Clear software library", genericBackupConfirmation, clearSoftwareLibrary, nullptr, nullptr, nullptr, &leafEditSoftwareLibrary };
+    MenuSystemNode leafClearStepHistory { "Clear step history", genericBackupConfirmation, clearStepHistory, nullptr, nullptr, nullptr, &leafClearSoftwareLibrary };
+    MenuSystemNode leafClearPlayHistory { "Clear play history", genericBackupConfirmation, clearPlayHistory, nullptr, nullptr, nullptr, &leafClearStepHistory };
 
     // Friends List management
-    MenuSystem leafRestoreFriendsList { "Restore friends list", nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
-    MenuSystem leafBackupFriendsList { "Backup friends list", nullptr, nullptr, nullptr, nullptr, nullptr, &leafRestoreFriendsList};
-    MenuSystem leafClearFriendsList { "Clear friends list", nullptr, nullptr, nullptr, nullptr, nullptr, &leafBackupFriendsList };
+    MenuSystemNode leafRestoreFriendsList { "Restore friends list", nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
+    MenuSystemNode leafBackupFriendsList { "Backup friends list", nullptr, nullptr, nullptr, nullptr, nullptr, &leafRestoreFriendsList};
+    MenuSystemNode leafClearFriendsList { "Clear friends list", nullptr, nullptr, nullptr, nullptr, nullptr, &leafBackupFriendsList };
 
     // Shared icon cache management
-    MenuSystem leafRestoreSharedIconCache { "Restore shared icon cache", "Restore cached icon data from backup?", restoreSharedIconCache, nullptr, nullptr, nullptr, nullptr };
-    MenuSystem leafBackupSharedIconCache { "Backup shared icon cache", "Backup shared cached icon data?", backupSharedIconCacheMenuCallback, nullptr, nullptr, nullptr, &leafRestoreSharedIconCache };
-    MenuSystem leafUpdateSharedIconCache { "Update shared icon cache", "Update shared cached icon data?", updateSharedIconCache, nullptr, nullptr, nullptr, &leafBackupSharedIconCache };
-    MenuSystem leafClearSharedIconCache { "Clear shared icon cache", "Delete cached icon data? The system will reboot afterwards.", clearSharedIconCache, nullptr, nullptr, nullptr, &leafUpdateSharedIconCache };
+    MenuSystemNode leafRestoreSharedIconCache { "Restore shared icon cache", "Restore cached icon data from backup?", restoreSharedIconCache, nullptr, nullptr, nullptr, nullptr };
+    MenuSystemNode leafBackupSharedIconCache { "Backup shared icon cache", "Backup shared cached icon data?", backupSharedIconCacheMenuCallback, nullptr, nullptr, nullptr, &leafRestoreSharedIconCache };
+    MenuSystemNode leafUpdateSharedIconCache { "Update shared icon cache", "Update shared cached icon data?", updateSharedIconCache, nullptr, nullptr, nullptr, &leafBackupSharedIconCache };
+    MenuSystemNode leafClearSharedIconCache { "Clear shared icon cache", "Delete cached icon data? The system will reboot afterwards.", clearSharedIconCache, nullptr, nullptr, nullptr, &leafUpdateSharedIconCache };
 
     // Home menu icon
-    MenuSystem leafRestoreHomeMenuIconCache { "Restore HOME Menu icon cache", "Restore cached icon data from backup?", restoreHomemenuIconCache, nullptr, nullptr, nullptr, nullptr };
-    MenuSystem leafBackupHomeMenuIconCache { "Backup HOME Menu icon cache", "Backup HOME Menu cached icon data?", backupHomemenuIconCacheMenuCallback, nullptr, nullptr, nullptr, &leafRestoreHomeMenuIconCache };
-    MenuSystem leafUpdateHomeMenuIconCache { "Update HOME Menu icon cache", "Update HOME Menu cached icon data?", updateHomemenuIconCache, nullptr, nullptr, nullptr, &leafBackupHomeMenuIconCache };
-    MenuSystem leafClearHomeMenuIconCache { "Clear HOME Menu icon cache", "Delete cached icon data? The system will reboot afterwards.", clearHomemenuIconCache, nullptr, nullptr, nullptr, &leafUpdateHomeMenuIconCache };
+    MenuSystemNode leafRestoreHomeMenuIconCache { "Restore HOME Menu icon cache", "Restore cached icon data from backup?", restoreHomemenuIconCache, nullptr, nullptr, nullptr, nullptr };
+    MenuSystemNode leafBackupHomeMenuIconCache { "Backup HOME Menu icon cache", "Backup HOME Menu cached icon data?", backupHomemenuIconCacheMenuCallback, nullptr, nullptr, nullptr, &leafRestoreHomeMenuIconCache };
+    MenuSystemNode leafUpdateHomeMenuIconCache { "Update HOME Menu icon cache", "Update HOME Menu cached icon data?", updateHomemenuIconCache, nullptr, nullptr, nullptr, &leafBackupHomeMenuIconCache };
+    MenuSystemNode leafClearHomeMenuIconCache { "Clear HOME Menu icon cache", "Delete cached icon data? The system will reboot afterwards.", clearHomemenuIconCache, nullptr, nullptr, nullptr, &leafUpdateHomeMenuIconCache };
     
     // Home menu software
-    MenuSystem leafRemoveSoftwareUpdateNag { "Remove software update nag", "Remove update nag of all installed software?", removeSoftwareUpdateNag, nullptr, nullptr, nullptr, nullptr };
-    MenuSystem leafRepackAllHomeMenuSoftware { "Repack all HOME Menu software", "Gift-wrap all software on HOME Menu?", repackHomemenuSoftware, nullptr, nullptr, nullptr, &leafRemoveSoftwareUpdateNag };
-    MenuSystem leafUnwrapAllHomeMenuSoftware { "Unwrap all HOME Menu software", "Unwrap all gift-wrapped software on HOME Menu?", unpackRepackHomemenuSoftwareMenuCallback, nullptr, nullptr, nullptr, &leafRepackAllHomeMenuSoftware };
-    MenuSystem leafResetFolderCount { "Reset folder count", "Reset folder count back to 1?", resetFolderCount, nullptr, nullptr, nullptr, &leafUnwrapAllHomeMenuSoftware };
-    MenuSystem leafResetDemoPlayCount { "Reset demo play count", "Reset play count on all installed demos?", resetDemoPlayCount, nullptr, nullptr, nullptr, &leafResetFolderCount };
+    MenuSystemNode leafRemoveSoftwareUpdateNag { "Remove software update nag", "Remove update nag of all installed software?", removeSoftwareUpdateNag, nullptr, nullptr, nullptr, nullptr };
+    MenuSystemNode leafRepackAllHomeMenuSoftware { "Repack all HOME Menu software", "Gift-wrap all software on HOME Menu?", repackHomemenuSoftware, nullptr, nullptr, nullptr, &leafRemoveSoftwareUpdateNag };
+    MenuSystemNode leafUnwrapAllHomeMenuSoftware { "Unwrap all HOME Menu software", "Unwrap all gift-wrapped software on HOME Menu?", unpackRepackHomemenuSoftwareMenuCallback, nullptr, nullptr, nullptr, &leafRepackAllHomeMenuSoftware };
+    MenuSystemNode leafResetFolderCount { "Reset folder count", "Reset folder count back to 1?", resetFolderCount, nullptr, nullptr, nullptr, &leafUnwrapAllHomeMenuSoftware };
+    MenuSystemNode leafResetDemoPlayCount { "Reset demo play count", "Reset play count on all installed demos?", resetDemoPlayCount, nullptr, nullptr, nullptr, &leafResetFolderCount };
 
     // Miscellaneous
-    MenuSystem leafMaximizePlayCoinCount { "Maximize Play Coin Count", nullptr, setAllPlayCoins, nullptr, nullptr, nullptr, nullptr };
-    MenuSystem leafClearGameNotes { "Clear Game Notes", "Delete all of your game notes?", clearGameNotes, nullptr, nullptr, nullptr, &leafMaximizePlayCoinCount };
-    MenuSystem leafResetEShopBGM { "Reset eShop BGM", "Restore the original Nintendo eShop music?", resetEShopBGM, nullptr, nullptr, nullptr, &leafClearGameNotes };
-    MenuSystem leafReplaceEShopBGM { "Replace eShop BGM", "Replace the current Nintendo eShop music?", replaceEShopBGM, nullptr, nullptr, nullptr, &leafResetEShopBGM };
-    MenuSystem leafChangeAcceptedEULAVersion { "Change accepted EULA version", nullptr, changeAcceptedEULAVersion, nullptr, nullptr, nullptr, &leafReplaceEShopBGM };
-    MenuSystem leafToggleHOMETestMenu { "Toggle HOME/Test Menu", nullptr, toggleNSMenu, nullptr, nullptr, nullptr, &leafChangeAcceptedEULAVersion };
+    MenuSystemNode leafMaximizePlayCoinCount { "Maximize Play Coin Count", nullptr, setAllPlayCoins, nullptr, nullptr, nullptr, nullptr };
+    MenuSystemNode leafClearGameNotes { "Clear Game Notes", "Delete all of your game notes?", clearGameNotes, nullptr, nullptr, nullptr, &leafMaximizePlayCoinCount };
+    MenuSystemNode leafResetEShopBGM { "Reset eShop BGM", "Restore the original Nintendo eShop music?", resetEShopBGM, nullptr, nullptr, nullptr, &leafClearGameNotes };
+    MenuSystemNode leafReplaceEShopBGM { "Replace eShop BGM", "Replace the current Nintendo eShop music?", replaceEShopBGM, nullptr, nullptr, nullptr, &leafResetEShopBGM };
+    MenuSystemNode leafChangeAcceptedEULAVersion { "Change accepted EULA version", nullptr, changeAcceptedEULAVersion, nullptr, nullptr, nullptr, &leafReplaceEShopBGM };
+    MenuSystemNode leafToggleHOMETestMenu { "Toggle HOME/Test Menu", nullptr, toggleNSMenu, nullptr, nullptr, nullptr, &leafChangeAcceptedEULAVersion };
 
     // Sorting (new)
-    MenuSystem leafSortAlphabetically { "Sort Alphabetically", nullptr, SortAlphabetically, nullptr, nullptr, nullptr, nullptr};
+    MenuSystemNode leafSortAlphabetically { "Sort Alphabetically", nullptr, SortAlphabetically, nullptr, nullptr, nullptr, nullptr};
 
     // Main Menu
-    MenuSystem mainMiscellaneous { "Miscellaneous", nullptr, nullptr, nullptr, &leafToggleHOMETestMenu, nullptr, nullptr };
-    MenuSystem mainSorting { "HOME Menu sorting options", nullptr, nullptr, nullptr,  &leafSortAlphabetically, nullptr, &mainMiscellaneous };
-    MenuSystem mainHomeMenuSoftwareManagement { "HOME Menu software management", nullptr, nullptr, nullptr,  &leafResetDemoPlayCount, nullptr, &mainSorting };
-    MenuSystem mainHomeMenuIconCacheManagement { "HOME Menu icon cache management", nullptr, nullptr, nullptr, &leafClearHomeMenuIconCache, nullptr, &mainHomeMenuSoftwareManagement };
-    MenuSystem mainSharedIconCacheManagement { "Shared icon cache management", nullptr, nullptr, nullptr, &leafClearSharedIconCache, nullptr, &mainHomeMenuIconCacheManagement };
-    MenuSystem mainFriendsListManagement { "Friends list management", nullptr, nullptr, nullptr, &leafClearFriendsList, nullptr, &mainSharedIconCacheManagement };
-    MenuSystem mainActivityLogManagement { "Activity log management", nullptr, nullptr, nullptr, &leafClearPlayHistory, nullptr, &mainFriendsListManagement };
+    MenuSystemNode mainMiscellaneous { "Miscellaneous", nullptr, nullptr, nullptr, &leafToggleHOMETestMenu, nullptr, nullptr };
+    MenuSystemNode mainSorting { "HOME Menu sorting options", nullptr, nullptr, nullptr,  &leafSortAlphabetically, nullptr, &mainMiscellaneous };
+    MenuSystemNode mainHomeMenuSoftwareManagement { "HOME Menu software management", nullptr, nullptr, nullptr,  &leafResetDemoPlayCount, nullptr, &mainSorting };
+    MenuSystemNode mainHomeMenuIconCacheManagement { "HOME Menu icon cache management", nullptr, nullptr, nullptr, &leafClearHomeMenuIconCache, nullptr, &mainHomeMenuSoftwareManagement };
+    MenuSystemNode mainSharedIconCacheManagement { "Shared icon cache management", nullptr, nullptr, nullptr, &leafClearSharedIconCache, nullptr, &mainHomeMenuIconCacheManagement };
+    MenuSystemNode mainFriendsListManagement { "Friends list management", nullptr, nullptr, nullptr, &leafClearFriendsList, nullptr, &mainSharedIconCacheManagement };
+    MenuSystemNode mainActivityLogManagement { "Activity log management", nullptr, nullptr, nullptr, &leafClearPlayHistory, nullptr, &mainFriendsListManagement };
 
 
-    AssignParentAndSiblings(nullptr, &mainActivityLogManagement);
-    AssignParentAndSiblings(&mainActivityLogManagement, mainActivityLogManagement.subMenu);
-    AssignParentAndSiblings(&mainFriendsListManagement, mainFriendsListManagement.subMenu);
-    AssignParentAndSiblings(&mainSharedIconCacheManagement, mainSharedIconCacheManagement.subMenu);
-    AssignParentAndSiblings(&mainHomeMenuIconCacheManagement, mainHomeMenuIconCacheManagement.subMenu);
-    AssignParentAndSiblings(&mainHomeMenuSoftwareManagement, mainHomeMenuSoftwareManagement.subMenu);
-    AssignParentAndSiblings(&mainSorting, mainSorting.subMenu);
-    AssignParentAndSiblings(&mainMiscellaneous, mainMiscellaneous.subMenu);
+    MenuAssignParentAndSiblings(nullptr, &mainActivityLogManagement);
+    MenuAssignParentAndSiblings(&mainActivityLogManagement, mainActivityLogManagement.subMenu);
+    MenuAssignParentAndSiblings(&mainFriendsListManagement, mainFriendsListManagement.subMenu);
+    MenuAssignParentAndSiblings(&mainSharedIconCacheManagement, mainSharedIconCacheManagement.subMenu);
+    MenuAssignParentAndSiblings(&mainHomeMenuIconCacheManagement, mainHomeMenuIconCacheManagement.subMenu);
+    MenuAssignParentAndSiblings(&mainHomeMenuSoftwareManagement, mainHomeMenuSoftwareManagement.subMenu);
+    MenuAssignParentAndSiblings(&mainSorting, mainSorting.subMenu);
+    MenuAssignParentAndSiblings(&mainMiscellaneous, mainMiscellaneous.subMenu);
 
-    MenuSystem* topMenuRoot = &mainActivityLogManagement;
-    MenuSystem* currentRoot = topMenuRoot;
-    MenuSystem* currentSelectedItem = currentRoot;
-    MenuSystem* lastItem = nullptr;
-    const u8 startingDisplayIndex = 3;
-    u8 currentSelectedDisplayIndex = startingDisplayIndex;
+    MenuSystem menuSystem;
+    InitializeMenuSystem(menuSystem, &mainActivityLogManagement);
 
     while (aptMainLoop())
     {
+        // Application Header
         printf("\x1b[1;0H\x1b[30;47m%-50s", " ");
         printf("\x1b[1;18HCthulhu v%01u.%01u.%01u\x1b[0;0m", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
-
-        MenuSystem* currentMenuItem = currentRoot;
-        u8 displayIndex = startingDisplayIndex;
-
-        // Display the menu header
-        const char* menuHeader = (currentRoot->parentMenu) ? currentRoot->parentMenu->text : "Main menu";
-        printf("\x1b[%u;0H%-48s", displayIndex++, menuHeader);
-        printf("\x1b[%u;0H================================================", displayIndex++);
-        displayIndex += 2;
-
-        // Display current menu
-        while (currentMenuItem != nullptr)
-        {
-            printf("\x1b[%u;4H%-48s", displayIndex, currentMenuItem->text);
-            if (currentMenuItem == currentSelectedItem)
-            {
-                currentSelectedDisplayIndex = displayIndex;
-            }
-            lastItem = currentMenuItem;
-            currentMenuItem = currentMenuItem->nextSibling;
-            displayIndex++;
-        }
-
-        // Add an extra line, and display the go back option
-        displayIndex++;
-        printf("\x1b[%u;4H%-48s", displayIndex, currentRoot->parentMenu ? "Go back." : "Exit Application");
-
-        if (currentSelectedItem == nullptr)
-        {
-            currentSelectedDisplayIndex = displayIndex;
-        }
-
-        // Put the cursor in front of the selected item
-        printf("\x1b[%u;2H>", currentSelectedDisplayIndex);
-
-        // print footer
-        printf("\x1b[27;2HPress START to reboot the 3DS.");
-        printf("\x1b[28;2HPress SELECT to toggle auto backup.");
-        printf("\x1b[29;2HAuto backup of icon cache: %s", dobackup ? "ON " : "OFF");
-
-        consoleSelect(&bottomScreen);
-        printf("\x1b[1;2HSelected -> %-28s", (currentSelectedItem) ? currentSelectedItem->text : "Go Back");
-        printf("\x1b[2;2HRoot -> %-28s", currentRoot->text);
-        consoleSelect(&topScreen);
 
         hidScanInput();
         u32 kDown = hidKeysDown();
 
-        // Handle up/down menu navigation
-        if (kDown & KEY_DOWN)
-        {
-            printf("\x1b[%u;2H ", currentSelectedDisplayIndex);
-            if (currentSelectedItem == nullptr) 
-            {
-                currentSelectedItem = currentRoot;
-            }
-            else
-            {
-                currentSelectedItem = currentSelectedItem->nextSibling;
-            }
-        }
-        else if (kDown & KEY_UP)
-        {
-            printf("\x1b[%u;2H ", currentSelectedDisplayIndex);
-            if (currentSelectedItem == nullptr)
-            {
-                currentSelectedItem = lastItem;
-            }
-            else
-            {
-                currentSelectedItem = currentSelectedItem->previousSibling;
-            }
-        }
+        TickMenu(menuSystem, kDown);
 
-        // handle selection and backout
-        if (kDown & KEY_A)
-        {
-            // if currentSelectedItem is nullptr then we are on the "go back" item
-            if (currentSelectedItem == nullptr)
-            {
-                GoBack(&currentRoot, &currentSelectedItem);
-                consoleClear();
-            }
-            else
-            {
-                // if there is a subMenu then go into it, otherwise prompt and execute.
-                if (currentSelectedItem->subMenu)
-                {
-                    currentRoot = currentSelectedItem->subMenu;
-                    currentSelectedItem = currentRoot;
-                    consoleClear();
-                }
-                else
-                {
-                    if (currentSelectedItem->confirmationPrompt == nullptr || promptConfirm(currentSelectedItem->text, currentSelectedItem->confirmationPrompt))
-                    {
-                        if (currentSelectedItem->callback)
-                        {
-                            // Fix this for unwrap (it needs a false)
-                            currentSelectedItem->callback();
-                        }
-                        consoleClear();
-                    }
-                }
-            }
-        }
-        else if (kDown & KEY_B)
-        {
-            if (currentRoot->parentMenu)
-            {
-                GoBack(&currentRoot, &currentSelectedItem);
-                consoleClear();
-            }
-            else
-            {
-                if (envIsHomebrew()) break;
-                else APT_HardwareResetAsync();
-            }
-        }
+        // Print application Footer
+        printf("\x1b[27;2HPress START to reboot the 3DS.");
+        printf("\x1b[28;2HPress SELECT to toggle auto backup.");
+        printf("\x1b[29;2HAuto backup of icon cache: %s", dobackup ? "ON " : "OFF");
 
+        // Application Logic
         if (kDown & KEY_SELECT)
         {
             dobackup ^= true;
@@ -1759,6 +1580,7 @@ int main() {
             else APT_HardwareResetAsync();
         }
 
+        // Tick the frame over
         gfxEndFrame();
     }
 

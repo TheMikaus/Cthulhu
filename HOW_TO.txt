@@ -1,0 +1,9 @@
+Compile
+Open Terminal
+Go to C:\Work\GameDevProjects3ds\Cthulhu
+make_all.bat
+
+Running the thing
+Copy it to SD card 3ds
+Run the Homebrew channel
+then select Cthulhu
