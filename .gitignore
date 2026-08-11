@@ -4,3 +4,7 @@ build
 *.cia
 *.smdh
 *.elf
+*.3gx
+runtime/.build/
+runtime/out/
+runtime/.analysis/

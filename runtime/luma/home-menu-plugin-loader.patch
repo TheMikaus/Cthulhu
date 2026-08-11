@@ -1,0 +1,19 @@
+diff --git a/sysmodules/loader/source/loader.c b/sysmodules/loader/source/loader.c
+index f97231c..a3d8a5b 100644
+--- a/sysmodules/loader/source/loader.c
++++ b/sysmodules/loader/source/loader.c
+@@ -454,7 +454,13 @@ static Result LoadProcessImpl(Handle *outProcessHandle, const ExHeader_Info *exhi
+             res = R_SUCCEEDED(res) ? 0 : res;
+
+             // check for plugin
+-            if (!res && ((u32)((titleId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000))
++            // Cthulhu: Luma normally restricts 3GX loading to application-class
++            // titles. HOME Menu is a system application (00040030...), so it
++            // never reaches the loader despite plugin_loader_enabled. Permit
++            // only the USA HOME Menu revision we have signature-validated.
++            const bool isCthulhuHomeMenu = titleId == 0x0004003000008F02ULL;
++            if (!res && (((u32)((titleId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000) ||
++                         isCthulhuHomeMenu))
+             {
+                 u32 processID;
+                 assertSuccess(svcGetProcessId(&processID, *outProcessHandle));

@@ -1,0 +1,23 @@
+Author: TheMikaus / Cthulhu
+
+Version:
+    Major: 0
+    Minor: 7
+    Revision: 0
+
+Targets:
+
+Title: Cthulhu HOME Extension
+
+Summary: Read-only HOME Menu extension framework diagnostic
+
+Description: |
+  Read-only USA HOME Menu extension framework diagnostic.
+  It validates executable signatures and publishes bounded layout events.
+  This build does not modify HOME Menu positions or savedata.
+
+Compatibility: Console
+
+MemorySize: 5MiB
+
+UsePrivateMemory: false

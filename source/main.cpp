@@ -4,7 +4,10 @@
 #include <unistd.h>
 #include <string.h>
 #include <algorithm>
+#include <vector>
 #include <3ds.h>
+
+#include "home_menu_request.h"
 
 #define ENTRY_SHARED_COUNT 0x200
 #define ENTRY_HOMEMENU_COUNT 0x168
@@ -130,7 +133,7 @@ typedef struct {
     u8 day;
 } DATE;
 
-Result PTMSYSM_FormatSavedata(void)
+Result CthulhuPTMSYSM_FormatSavedata(void)
 {
     Result ret;
     u32 *cmdbuf = getThreadCommandBuffer();
@@ -142,7 +145,7 @@ Result PTMSYSM_FormatSavedata(void)
     return (Result)cmdbuf[1];
 }
 
-Result PTMSYSM_ClearStepHistory(void)
+Result CthulhuPTMSYSM_ClearStepHistory(void)
 {
     Result ret;
     u32 *cmdbuf = getThreadCommandBuffer();
@@ -154,7 +157,7 @@ Result PTMSYSM_ClearStepHistory(void)
     return (Result)cmdbuf[1];
 }
 
-Result PTMSYSM_ClearPlayHistory(void)
+Result CthulhuPTMSYSM_ClearPlayHistory(void)
 {
     Result ret;
     u32 *cmdbuf = getThreadCommandBuffer();
@@ -166,7 +169,7 @@ Result PTMSYSM_ClearPlayHistory(void)
     return (Result)cmdbuf[1];
 }
 
-Result PTMSYSM_GetPlayHistory(u32* read, u32 offset, u32 count, ENTRY_HISTORY* out)
+Result CthulhuPTMSYSM_GetPlayHistory(u32* read, u32 offset, u32 count, ENTRY_HISTORY* out)
 {
     Result ret;
     u32 *cmdbuf = getThreadCommandBuffer();
@@ -322,7 +325,7 @@ SMDH_HOMEMENU* getSystemIconList(u64* tids, u64 count) {
 
     if (countt==0 || !tids) return nullptr;
 
-    SMDH_HOMEMENU* icons = new SMDH_HOMEMENU[countt];
+    SMDH_HOMEMENU* icons = new SMDH_HOMEMENU[countt]();
 
     u64 i = 0;
     u64 loaded = 0;
@@ -414,7 +417,7 @@ FS_Archive openSystemSavedata(u32* UniqueID) {
 }
 
 void clearPlayHistory() {
-    Result res = PTMSYSM_ClearPlayHistory();
+    Result res = CthulhuPTMSYSM_ClearPlayHistory();
     if (R_FAILED(res)) promptError("Clear Step History", "Failed to clear play history.");
     printf("Clearing play history... %s %#lx.\n", R_FAILED(res) ? "ERROR" : "OK", res);
 
@@ -423,7 +426,7 @@ void clearPlayHistory() {
 }
 
 void clearStepHistory() {
-    Result res = PTMSYSM_ClearStepHistory();
+    Result res = CthulhuPTMSYSM_ClearStepHistory();
     if (R_FAILED(res)) promptError("Clear Step History", "Failed to clear step history.");
     printf("Clearing step history... %s %#lx.\n", R_FAILED(res) ? "ERROR" : "OK", res);
 
@@ -728,7 +731,7 @@ void editSoftwareLibrary() {
 }
 
 void resetDemoPlayCount() {
-    Result res = AM_DeleteAllDemoLaunchInfos();
+    Result res = AMNET_DeleteAllDemoLaunchInfos();
     if (R_FAILED(res)) promptError("Reset Demo Play Count", "Failed to reset demo play count.");
     printf("Reseting demo play count... %s %#lx.\n", R_FAILED(res) ? "ERROR" : "OK", res);
 
@@ -1176,80 +1179,106 @@ void resetFolderCount() {
     waitKey();
 }
 
-// MIKAUS TODO - fix up this function
-void SortAlphabetically()
+void GenerateSortRequest(CthulhuHome::SortAlgorithm algorithm)
 {
-    Result res;
-    Handle save;
+    u64 packedCount = 0;
+    u64 *titleIds = getTitleList(&packedCount);
+    const u32 nandCount = static_cast<u32>(packedCount >> 32);
+    const u32 sdCount = static_cast<u32>(packedCount);
+    const u32 totalCount = nandCount + sdCount;
 
-    // 2024-07-04 - Notes
-    // You can't access the home menu's save data because it is currently in use by home menu
-    // Which means you have to access the archive when the home menu isn't running. i.e. godmode9
-    // Copy partition1.bin, or maybe just copy the folder as is and see if we can open it as an archive
-    // This function will parse it for Launcher.dat
-    // Update the file, and then you have to resave it
-    // This function should also back up and restore the Launcher.dat from a partition backup
-    // Ideas
-    // - If there is no /3ds/Cthulu/homemenuID[region] folder then create gm9 script that will copy it?
-    // - If there is a /3ds/Cthulu/homemenuID[region] create a gm9 script to put it back
-    // - See if we can use FSUSER_OpenArchive on the title once we've copied it
-    // - Enable Game Patching in luma might allow us to do the ips
-    // - Enable Game Patching in luma - does romfs include Launcher.dat
-    // ? What are firms that can load with Rosalina, and what do I do with them?
-    // ? Is Fastbook3ds something I should look into? like use fastbook to load into a state where I can modify the contents?
-    // ? I think Rosalina/Luma's loader should be able to auto patch HomeMenu
-    // ? not related: this is interesting though - https://github.com/hax0kartik/rehid/tree/master/source
-    // Websites - https://www.3dbrew.org/wiki/Home_Menu#Home_Menu_NAND_savedata
-    //          - https://www.3dbrew.org/wiki/System_SaveData
-    //          - https://www.3dbrew.org/wiki/Filesystem_services_PXI
-    // Other repos to check - Luma3ds and Libctru
+    if (!titleIds || totalCount == 0) {
+        delete[] titleIds;
+        promptError("Create Sort Request", "No installed titles were found.");
+        return;
+    }
 
-    //     Error returned: c92044e7
-    u32 homemenuID[] = {0x00020082, 0x0002008f, 0x00020098, 0x00020098, 0x000200a1, 0x000200a9, 0x000200b1};
-    FS_Archive syssave = openSystemSavedata(homemenuID);
+    SMDH_HOMEMENU *icons = getSystemIconList(titleIds, packedCount);
+    if (!icons) {
+        delete[] titleIds;
+        promptError("Create Sort Request", "Failed to read title metadata.");
+        return;
+    }
 
-    // This fails due to resource busy. Home Menu has it open
-    // cthulu's documentation states that the resetFolderCount function won't work unless in test mode
-    // it's the only other function that accesses launcher.dat
-    res = FSUSER_OpenFile(&save, syssave, (FS_Path)fsMakePath(PATH_ASCII, "/Launcher.dat"), FS_OPEN_WRITE, 0);
-    /*
-    if (R_FAILED(res)) promptError("Reset Folder Count", "Failed to open HOME Menu savedata.");
-    u8 count = 1;
-    res = FSFILE_Write(save, NULL, 0xD80, &count, sizeof(u8), 0);
-    res = FSFILE_Write(save, NULL, 0xD85, &count, sizeof(u8), 0);
-    printf("Reseting folder count to 1... %s %#lx.\n", R_FAILED(res) ? "ERROR" : "OK", res);
-    */
+    std::vector<CthulhuHome::RequestEntry> entries(totalCount);
+    for (u32 i = 0; i < totalCount; ++i) {
+        CthulhuHome::RequestEntry &entry = entries[i];
+        memset(&entry, 0, sizeof(entry));
+        entry.titleId = titleIds[i];
+        entry.mediaType = i < nandCount ? CthulhuHome::MEDIA_NAND : CthulhuHome::MEDIA_SD;
 
-    // reset cart launcher position
-    /* 
-        from 3dbrew.org
-            0x0	0x1	Launcher.dat format version.
-            0x1	0x1	Padding?
-            0x2	0x2	u16, cart launcher position on the home menu
-            0x4	0x4	Unknown, normally 0x0.
-            0x8	0xB40	360 u64s, list of NAND titleIDs. For an unused entry, the u64 value is ~0(in that case, the corresponding entries at 0xD9A/0x106A for this titleID are not used either). This is used for the icons displayed on the main Home Menu screen.
-            0xB51	0x1	u8, numbers of rows on the home menu, minus 1 (range 0..5) (with the enlarge/reduce option)
-            0xB5C	0x2	u16, position of the cursor on the home menu
-            0xB5E	0x2	u16, horizontal scrolling level (divided by the number of rows to get the actual number of columns hidden) on the home menu
-            0xD80	0x2 or 0x4	u16 or u32, number the next created folder will have (starts at 1)
-            0xD9A	0x2D0	Array of 360 s16 fields, each one corresponds to the titleIDs at the array located at offset 0x8. This is used for icon position, 0x0 for the very first icon, 0x1 for the next one and so on. This is completely linear, no X/Y coordinates. Implemented with the format-version for 4.0.0-X.
-            0x106A	0x168	Array of 360 s8 fields, each one corresponds to the titleIDs at the array located at offset 0x8. This is used for icon position. When an s8 here is -1(which is the normal value), the icon is located with the first chunk of icons(outbuf+0), otherwise the base address is outbuf+0xB40+<s8val*0x1E0>(which is equivalent to 60 icons * s8val). Implemented with the format-version for 4.0.0-X. Corresponds to the id of the folder the icon is in, range -1..59, with -1 meaning not in a folder
-            0x11DC	0x78	Array of 60 s16 fields, corresponding to folders position (with -1 meaning the folder is deleted/not yet created)
-            0x1434	0x3C	Array of 60 u8 fields, the number of rows in each corresponding folder (defaults to 2)
-            0x1470	0x78	Array of 60 u16 fields, the position of the cursor in each corresponding folder (defaults to 0)
-            0x14E8	0x78	Array of 60 u16 fields, the horizontal scroll level in each corresponding folder (divided by the number of rows to get the actual number of columns hidden) (defaults to 0)
-            0x1560	0x7F8	Array of 60 utf-16 strings of length 0x22 (in bytes, so only 0x11 utf-16 characters) (not NULL-terminated), the name of each corresponding folder
-            0x1D58	0xF0	Array of 60 u32, the number of each corresponding folder 
-    */
+        if (!memcmp(icons[i].magic, "SMDH", 4)) {
+            entry.flags |= CthulhuHome::ENTRY_HAS_TITLE;
+            memcpy(entry.title, icons[i].titles[CFG_LANGUAGE_EN].shortDescription,
+                   sizeof(entry.title));
+            entry.title[CthulhuHome::MAX_TITLE_UNITS - 1] = 0;
+        }
+    }
 
-    FSFILE_Close(save);
-    FSUSER_ControlArchive(syssave, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
-    FSUSER_CloseArchive(syssave);
+    std::stable_sort(entries.begin(), entries.end(),
+        [algorithm](const CthulhuHome::RequestEntry &left,
+                    const CthulhuHome::RequestEntry &right) {
+            if (algorithm == CthulhuHome::SORT_TITLE_ID) {
+                if (left.titleId != right.titleId)
+                    return left.titleId < right.titleId;
+                return left.mediaType < right.mediaType;
+            }
+            const bool leftNamed = (left.flags & CthulhuHome::ENTRY_HAS_TITLE) != 0;
+            const bool rightNamed = (right.flags & CthulhuHome::ENTRY_HAS_TITLE) != 0;
+            if (leftNamed != rightNamed)
+                return leftNamed;
+            const int comparison = CthulhuHome::CompareTitles(left, right);
+            return algorithm == CthulhuHome::SORT_REVERSE_ALPHABETICAL
+                ? comparison > 0 : comparison < 0;
+        });
 
-    printf("Press any key to continue.\n");
-    waitKey();
+    CthulhuHome::RequestHeader header = {};
+    header.magic = CthulhuHome::REQUEST_MAGIC;
+    header.version = CthulhuHome::REQUEST_VERSION;
+    header.algorithm = algorithm;
+    header.entryCount = entries.size();
+    header.payloadSize = entries.size() * sizeof(CthulhuHome::RequestEntry);
+    header.payloadCrc32 = CthulhuHome::Crc32(entries.data(), header.payloadSize);
 
-    return;
+    const char *temporaryPath = WORKDIR "/sort-request.tmp";
+    const char *requestPath = WORKDIR "/sort-request.bin";
+    FILE *request = fopen(temporaryPath, "wb");
+    bool success = request != nullptr;
+    if (success)
+        success = fwrite(&header, sizeof(header), 1, request) == 1;
+    if (success && !entries.empty())
+        success = fwrite(entries.data(), sizeof(CthulhuHome::RequestEntry),
+                         entries.size(), request) == entries.size();
+    if (request && fclose(request) != 0)
+        success = false;
+
+    if (success) {
+        remove(requestPath);
+        success = rename(temporaryPath, requestPath) == 0;
+    }
+    if (!success)
+        remove(temporaryPath);
+
+    delete[] icons;
+    delete[] titleIds;
+
+    if (success)
+        promptError("Create Catalog v0.6.1",
+                    "Reusable catalog v3 created. Rosalina v0.6.1 can refresh it from HOME Menu cache.");
+    else
+        promptError("Create Sort Request", "Failed to write the sort request.");
+}
+
+void SortAlphabetically() {
+    GenerateSortRequest(CthulhuHome::SORT_ALPHABETICAL);
+}
+
+void SortReverseAlphabetically() {
+    GenerateSortRequest(CthulhuHome::SORT_REVERSE_ALPHABETICAL);
+}
+
+void SortByTitleId() {
+    GenerateSortRequest(CthulhuHome::SORT_TITLE_ID);
 }
 
 void clearGameNotes(){
@@ -1528,11 +1557,13 @@ int main() {
     MenuSystemNode leafToggleHOMETestMenu { "Toggle HOME/Test Menu", nullptr, toggleNSMenu, nullptr, nullptr, nullptr, &leafChangeAcceptedEULAVersion };
 
     // Sorting (new)
-    MenuSystemNode leafSortAlphabetically { "Sort Alphabetically", nullptr, SortAlphabetically, nullptr, nullptr, nullptr, nullptr};
+    MenuSystemNode leafSortByTitleId { "Sort by Title ID", nullptr, SortByTitleId, nullptr, nullptr, nullptr, nullptr};
+    MenuSystemNode leafSortReverseAlphabetically { "Sort Z-A", nullptr, SortReverseAlphabetically, nullptr, nullptr, nullptr, &leafSortByTitleId};
+    MenuSystemNode leafSortAlphabetically { "Sort A-Z", nullptr, SortAlphabetically, nullptr, nullptr, nullptr, &leafSortReverseAlphabetically};
 
     // Main Menu
     MenuSystemNode mainMiscellaneous { "Miscellaneous", nullptr, nullptr, nullptr, &leafToggleHOMETestMenu, nullptr, nullptr };
-    MenuSystemNode mainSorting { "HOME Menu sorting options", nullptr, nullptr, nullptr,  &leafSortAlphabetically, nullptr, &mainMiscellaneous };
+    MenuSystemNode mainSorting { "HOME Menu sorting/catalog (v0.6.1)", nullptr, nullptr, nullptr,  &leafSortAlphabetically, nullptr, &mainMiscellaneous };
     MenuSystemNode mainHomeMenuSoftwareManagement { "HOME Menu software management", nullptr, nullptr, nullptr,  &leafResetDemoPlayCount, nullptr, &mainSorting };
     MenuSystemNode mainHomeMenuIconCacheManagement { "HOME Menu icon cache management", nullptr, nullptr, nullptr, &leafClearHomeMenuIconCache, nullptr, &mainHomeMenuSoftwareManagement };
     MenuSystemNode mainSharedIconCacheManagement { "Shared icon cache management", nullptr, nullptr, nullptr, &leafClearSharedIconCache, nullptr, &mainHomeMenuIconCacheManagement };

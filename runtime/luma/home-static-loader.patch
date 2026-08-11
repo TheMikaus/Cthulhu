@@ -1,0 +1,15 @@
+diff --git a/sysmodules/loader/source/loader.c b/sysmodules/loader/source/loader.c
+index f97231c..1234567 100644
+--- a/sysmodules/loader/source/loader.c
++++ b/sysmodules/loader/source/loader.c
+@@ -30,6 +30,7 @@
+ #include "plgldr.h"
++#include "cthulhu_home_static_patch.h"
+
+@@ -428,6 +429,8 @@ static Result LoadProcessImpl(Handle *outProcessHandle, const ExHeader_Info *exhi
+     u64 titleId = exhi->aci.local_caps.title_id;
+     if (R_SUCCEEDED(res = loadCode(exhi, programHandle, &mapped)))
+     {
++        CthulhuHomeStaticPatch_Apply(titleId, (u8 *)mapped.text_addr,
++                                     mapped.total_size << 12);
+         u32     *code = (u32 *)mapped.text_addr;

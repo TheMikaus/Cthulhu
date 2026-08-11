@@ -35,5 +35,7 @@ Obs.:
 
 
 New Features/Goals:
-- Allow sorting of home menu icons.
+- Generate a validated HOME Menu sort request from installed-title metadata.
+- Apply sort requests through a separate HOME Menu runtime hook.
 - Allow scripted sorting of home menu icons?
+- Search for and focus an installed title from a HOME Menu overlay.

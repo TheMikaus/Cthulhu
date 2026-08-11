@@ -1,0 +1,13 @@
+diff --git a/sysmodules/rosalina/source/plugin/plgloader.c b/sysmodules/rosalina/source/plugin/plgloader.c
+--- a/sysmodules/rosalina/source/plugin/plgloader.c
++++ b/sysmodules/rosalina/source/plugin/plgloader.c
+@@
+ #include "task_runner.h"
++#include "cthulhu_runtime_logger.h"
+@@
+     PluginLoaderContext *ctx = &PluginLoaderCtx;
+     u32 event = PLG__GetConfigMemoryEvent();
++    CthulhuRuntimeLogger_RecordAptHomeEvent(event,
++        PLG__GetConfigMemoryStatus(), ctx->pluginIsHome, ctx->target);
+
+     if (event == PLG_CFG_EXIT_EVENT)

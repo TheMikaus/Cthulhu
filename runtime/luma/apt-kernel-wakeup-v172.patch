@@ -1,0 +1,25 @@
+diff --git a/k11_extension/source/svc/SendSyncRequest.c b/k11_extension/source/svc/SendSyncRequest.c
+--- a/k11_extension/source/svc/SendSyncRequest.c
++++ b/k11_extension/source/svc/SendSyncRequest.c
+@@
+                         u32 plgStatus = PLG_GetStatus();
+                         u32 command = cmdbuf[3];
++                        if (command >= 10 && command <= 17)
++                            PLG_SignalEvent(0x80000000u |
++                                            ((command & 0x7Fu) << 16));
+
+                         if ((plgStatus == PLG_CFG_RUNNING && command == 3)
+diff --git a/sysmodules/rosalina/source/plugin/plgloader.c b/sysmodules/rosalina/source/plugin/plgloader.c
+--- a/sysmodules/rosalina/source/plugin/plgloader.c
++++ b/sysmodules/rosalina/source/plugin/plgloader.c
+@@
+     CthulhuRuntimeLogger_RecordAptHomeEvent(event,
+         PLG__GetConfigMemoryStatus(), ctx->pluginIsHome, ctx->target);
++    if (event & 0x80000000u)
++    {
++        PLG__SetConfigMemoryStatus(PLG__GetConfigMemoryStatus());
++        srvPublishToSubscriber(0x1002, 0);
++        return;
++    }
+
+     if (event == PLG_CFG_EXIT_EVENT)
