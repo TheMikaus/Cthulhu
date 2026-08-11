@@ -2767,3 +2767,56 @@ suppressed only while the panel is open, then verify power off. If it fails,
 reinsert the SD. `watchdog-v184.txt` must show whether
 `runtime_attached_pid == active_home_pid`; that single comparison determines
 whether attachment or controller behavior remains at fault.
+
+### 2026-08-10 — V184 confirmed; V185 targets complete layout ownership
+
+The user confirmed V184 is good: the complete panel controller is interactive
+after returning from Notifications. This establishes V184 as the latest
+confirmed rollback for overlay lifecycle, input ownership, and active-HOME
+attachment. It was archived on the SD as
+`H:\luma\disabled\CthulhuFrameworkHistory\CthulhuHomeOSD184-CONFIRMED.firm`.
+
+Work returned to the remaining feature: changing visible icon order without a
+reboot. Offline disassembly of the preserved USA HOME code established a more
+precise native sequence. Publish routine `0x00146D10` has exactly one static
+caller at `0x001BA830`. It is inside complete layout-event routine
+`0x001BA594`, which for mode zero performs additional operations around the
+already-tested rebuild `0x0013C680` and publish `0x00146D10`. Its confirmed
+global literals are wrapper `0x003827D8` and rebuild subobject `0x003827E4`.
+Static callers of the complete layout event are `0x001B9570`, `0x001B9F54`,
+and `0x001B9FB8`. Calling only rebuild/publish explains why serialized/grid
+state changed while instantiated visible icons did not.
+
+V185 does not call the complete event without its real owner. Instead it
+upgrades the safe bounded V182 scan into a targeted ownership report. After one
+successful sort, `ScanLiveLayoutOwnershipV185` scans readable HOME regions in
+64 KiB chunks through fixed local window `0x00900000` for four exact targets:
+the discovered raw layout, processed grid, wrapper `0x003827D8`, and rebuild
+subobject `0x003827E4`. Unlike V182 it includes readable code, so the report
+captures known static literals/call neighborhoods and any heap/runtime owner
+references together. It remains read-only, caps matches at 96, uses the static
+12 KiB report buffer, and unmaps every chunk. Output is
+`/3ds/Cthulhu/layout-ownership-v185.txt`.
+
+No HOME assembly hook, controller behavior, rendering, sort mutation,
+persistence, folder logic, or native call changed. The visible label is
+`Check HOME OSD V167 / Owner V185`. Build succeeded with exact hook symbols
+`0x14007024`, `0x1400722C`, `0x140075F4`.
+
+Deployment:
+
+- sole active payload `H:\luma\payloads\CthulhuHomeOSD185.firm`;
+- size 342016 bytes;
+- SHA-256
+  `D22E6DC4BDFA2FC4C58AF1ACA67B828DC3EA2E5FE1ACB2A8CFD87D2EAA7266F4`;
+- protected `H:\boot.firm` unchanged at
+  `10A8356230FF4C3E7D72FCFBC2F7E47CC12717DE2B6AF5122E081B51E023CC2A`.
+
+Test once: boot V185 and verify the label. Before opening Notifications, open
+L+Y, select the visibly opposite direction, and press A. Allow the ownership
+scan to finish; live icon movement is not yet expected. Close the panel, verify
+power off, and reinsert the SD. Read `layout-ownership-v185.txt` automatically.
+References outside known code literals provide the owner candidate for a later
+guarded complete-event call. If only code literals appear, use their natural
+caller chain for HOME-side object capture rather than another broad scan. Any
+crash or power-off regression requires immediate rollback to confirmed V184.

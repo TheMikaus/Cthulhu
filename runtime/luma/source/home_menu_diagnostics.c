@@ -2739,18 +2739,21 @@ static Result ApplySdSort(u16 selectedAlgorithm, bool stageFolders,
     return res;
 }
 
-static void ScanLiveLayoutBackrefsV182(Handle home)
+static void ScanLiveLayoutOwnershipV185(Handle home)
 {
     char *report = g_layoutBackrefReport;
     int length = sprintf(report,
-        "Cthulhu live layout back-reference scan\n"
-        "scan_version=1.8.2\nraw=%08lx\nprocessed=%08lx\n",
+        "Cthulhu live layout ownership scan\n"
+        "scan_version=1.8.5\nraw=%08lx\nprocessed=%08lx\n"
+        "wrapper=003827d8\nrebuild_subobject=003827e4\n",
         g_lastRawAddress, g_lastProcessedAddress);
     const u32 localWindow = 0x00900000;
     const u32 chunkLimit = 0x00010000;
     u32 address = 0x08000000;
     u32 regions = 0, words = 0, rawRefs = 0, gridRefs = 0;
-    while (address < 0x40000000 && rawRefs + gridRefs < 96)
+    u32 wrapperRefs = 0, rebuildRefs = 0;
+    while (address < 0x40000000 &&
+           rawRefs + gridRefs + wrapperRefs + rebuildRefs < 96)
     {
         MemInfo mem = {0}; PageInfo page = {0};
         Result query = svcQueryProcessMemory(&mem, &page, home, address);
@@ -2758,11 +2761,11 @@ static void ScanLiveLayoutBackrefsV182(Handle home)
         u32 next = mem.base_addr + mem.size;
         if (next <= address) break;
         if (mem.state != MEMSTATE_FREE && (mem.perm & MEMPERM_READ) &&
-            (mem.perm & MEMPERM_WRITE) && mem.size <= 0x04000000)
+            mem.size <= 0x04000000)
         {
             bool mappedRegion = false;
             for (u32 offset = 0; offset < mem.size &&
-                 rawRefs + gridRefs < 96; )
+                 rawRefs + gridRefs + wrapperRefs + rebuildRefs < 96; )
             {
                 u32 chunk = mem.size - offset;
                 if (chunk > chunkLimit) chunk = chunkLimit;
@@ -2773,12 +2776,17 @@ static void ScanLiveLayoutBackrefsV182(Handle home)
                 const u32 *base = (const u32 *)localWindow;
                 u32 count = chunk / 4;
                 words += count;
-                for (u32 i = 0; i < count && rawRefs + gridRefs < 96; i++)
+                for (u32 i = 0; i < count &&
+                     rawRefs + gridRefs + wrapperRefs + rebuildRefs < 96; i++)
                 {
                     const char *kind = NULL;
                     if (base[i] == g_lastRawAddress) { kind = "raw"; rawRefs++; }
                     else if (base[i] == g_lastProcessedAddress)
                     { kind = "grid"; gridRefs++; }
+                    else if (base[i] == 0x003827D8)
+                    { kind = "wrapper"; wrapperRefs++; }
+                    else if (base[i] == 0x003827E4)
+                    { kind = "rebuild"; rebuildRefs++; }
                     if (kind != NULL)
                     {
                         u32 a = mem.base_addr + offset + i * 4;
@@ -2806,13 +2814,15 @@ static void ScanLiveLayoutBackrefsV182(Handle home)
         address = next;
     }
     length += sprintf(report + length,
-        "regions=%lu\nwords=%lu\nraw_refs=%lu\ngrid_refs=%lu\n",
+        "regions=%lu\nwords=%lu\nraw_refs=%lu\ngrid_refs=%lu\n"
+        "wrapper_refs=%lu\nrebuild_refs=%lu\n",
         (unsigned long)regions, (unsigned long)words,
-        (unsigned long)rawRefs, (unsigned long)gridRefs);
+        (unsigned long)rawRefs, (unsigned long)gridRefs,
+        (unsigned long)wrapperRefs, (unsigned long)rebuildRefs);
     IFile file = {0};
     if (R_SUCCEEDED(IFile_Open(&file, ARCHIVE_SDMC,
         fsMakePath(PATH_EMPTY, ""),
-        fsMakePath(PATH_ASCII, "/3ds/Cthulhu/layout-backrefs-v182.txt"),
+        fsMakePath(PATH_ASCII, "/3ds/Cthulhu/layout-ownership-v185.txt"),
         FS_OPEN_CREATE | FS_OPEN_WRITE)))
     {
         u64 written = 0;
@@ -2841,7 +2851,7 @@ Result CthulhuHomeMenu_RunBackgroundSort(u16 selectedAlgorithm,
         res = ApplySdSort(selectedAlgorithm, true, foldersFirst,
                           algorithmOut, mutationsOut);
         if (R_SUCCEEDED(res))
-            ScanLiveLayoutBackrefsV182(home);
+            ScanLiveLayoutOwnershipV185(home);
         u32 rebuildOwnerAddress = 0x003827E4;
         u32 publishOwnerAddress = 0x003827D8;
         u32 ownerMatches = 1;
