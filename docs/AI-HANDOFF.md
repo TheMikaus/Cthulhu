@@ -3105,3 +3105,30 @@ framework fields: requested owner, observed owner, observer call count, and
 completion must agree. Completion 1 with no movement means this pass updates
 per-icon state but a later draw/rebind stage remains; a crash requires exact
 dump decoding and immediate V189 rollback.
+
+### 2026-08-11 — V190 callback completed with correct ABI; visual result pending
+
+V190 completed without a crash and the ARM11 dump directory remained empty.
+The persistent sort journal reached `shutdown-sort-committed` with result zero.
+All independent diagnostic fields agree:
+
+- scan-derived owner `0x08032918`;
+- validated model pointer `0x34635E00`;
+- requested owner `0x08032918`;
+- observer-recorded actual native owner `0x08032918`;
+- observer call count 1;
+- post-return completion count 1;
+- rebuild request/ack/calls all 1 with native result zero.
+
+Therefore the dynamically derived ABI object is correct, the native
+`0x001CA504` call returned normally, and V187's crash was specifically caused
+by passing wrapper field `object+0x12C` instead of the object base. V190 is safe
+on this test and must remain the active payload until the user's visual result
+is recorded.
+
+The logs cannot determine whether visible icons actually changed position.
+That observation is the decision boundary: immediate visible reorder means
+V190 is the first working no-reboot sort; no movement means this 360-entry pass
+updates icon state but not the instantiated position binding, and the next work
+must trace the later draw/rebind consumer rather than call this routine again.
+Do not alter or redeploy until the visual outcome is added.
