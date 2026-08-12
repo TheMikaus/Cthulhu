@@ -3147,3 +3147,48 @@ dirty/model state produced by this object, especially related methods in the
 positions into instantiated icon transforms. Preserve the dynamically derived
 owner and completed call as useful evidence, but do not add another speculative
 native call until the subsequent consumer and its ABI are identified.
+
+### 2026-08-11 — V191 compares rebuilt grid with separate instantiated model
+
+Further disassembly explains V190's safe visual no-op. Callback `0x001CA504`
+does not consume the processed grid at `0x346CCF90`. It loads
+`owner+0x128 = 0x34635E00`, then reads a record-array pointer from
+`iconModel+0x398F8`, and iterates 360/420 records of stride `0x230`. It updates
+per-icon state from that separate instantiated model. Since the persistent sort
+and native rebuild/publish did not synchronize this model first, V190 correctly
+refreshed from the old icon positions.
+
+The missing boundary is therefore model synchronization, not another redraw.
+V191 is read-only and disables the V190 callback request by publishing zero to
+channel `+0x100`. Its validated owner scan additionally maps
+`iconModel+0x398F8`, records the live record-array pointer, and logs the first
+12 records (selected words including fields used by the callback) beside the
+first 12 rebuilt processed-grid title IDs. Output is
+`/3ds/Cthulhu/icon-model-v191.txt`. Mapping is bounded to one pointer page and
+at most four record pages through the established fixed local window; all maps
+are removed before HOME resumes.
+
+No new native function is called. Existing persistent sorting, controller,
+Notifications recovery, input suppression, folder behavior, backup/readback,
+and power-off logic are unchanged. Live movement is not expected in V191.
+
+Build/deployment:
+
+- visible label `Check HOME OSD V167 / Model V191`;
+- HOME stub symbols unchanged from safe V190: start `0x14007024`, frame
+  `0x1400722C`, observer `0x14007438`, end `0x14007640`;
+- sole active `H:\luma\payloads\CthulhuHomeOSD191.firm`;
+- size 343040 bytes;
+- SHA-256
+  `31807DBF97C42537F16EFB016C06AE0E829A2C2C9B4DF4750102A8C6E7ADDE0B`;
+- safe V190 archived as
+  `H:\luma\disabled\CthulhuFrameworkHistory\CthulhuHomeOSD190-SAFE-NOMOVE.firm`;
+- V189/V188/V186/V184 remain available;
+- crash directory empty and protected root firmware unchanged.
+
+Test one visibly opposite sort before Notifications, let the read-only model
+comparison finish, verify power off, and reinsert. Icons are not expected to
+move. The report's record fields versus processed-grid IDs will identify
+whether the model stores title IDs directly or uses indices/handles, determining
+whether synchronization can be a bounded data update or must invoke its native
+builder.

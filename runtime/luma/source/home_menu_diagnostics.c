@@ -2739,12 +2739,12 @@ static Result ApplySdSort(u16 selectedAlgorithm, bool stageFolders,
     return res;
 }
 
-static u32 ScanLiveIconClassV190(Handle home)
+static u32 ScanLiveIconClassV191(Handle home)
 {
     char *report = g_layoutBackrefReport;
     int length = sprintf(report,
         "Cthulhu live icon class scan\n"
-        "scan_version=1.9.0\nraw=%08lx\nprocessed=%08lx\n"
+        "scan_version=1.9.1\nraw=%08lx\nprocessed=%08lx\n"
         "wrapper=003827d8\nrebuild_subobject=003827e4\n",
         g_lastRawAddress, g_lastProcessedAddress);
     const u32 localWindow = 0x00900000;
@@ -2902,10 +2902,54 @@ static u32 ScanLiveIconClassV190(Handle home)
         (unsigned long)wrapperRefs, (unsigned long)rebuildRefs,
         (unsigned long)classRefs, (unsigned long)functionRefs,
         (unsigned long)ownerRefs, iconOwner, iconModel);
+    if (iconModel != 0)
+    {
+        const u32 pointerAddress = iconModel + 0x398F8;
+        const u32 pointerPage = pointerAddress & ~0xFFF;
+        Result map = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE, localWindow,
+            home, pointerPage, 0x1000, 0);
+        u32 records = 0;
+        if (R_SUCCEEDED(map))
+        {
+            records = *(volatile u32 *)(localWindow +
+                                         (pointerAddress & 0xFFF));
+            svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE, localWindow, 0x1000);
+        }
+        length += sprintf(report + length,
+            "model_records_pointer=%08lx\nmodel_pointer_result=%08lx\n",
+            records, map);
+        if (R_SUCCEEDED(map) && records >= 0x08000000 && records < 0x40000000)
+        {
+            u32 recordPage = records & ~0xFFF;
+            u32 recordOffset = records & 0xFFF;
+            u32 recordMapSize = 0x3000;
+            if (recordOffset + 12 * 0x230 > recordMapSize)
+                recordMapSize = 0x4000;
+            map = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE, localWindow,
+                home, recordPage, recordMapSize, 0);
+            if (R_SUCCEEDED(map))
+            {
+                const u8 *recordBase = (const u8 *)(localWindow + recordOffset);
+                for (u32 i = 0; i < 12; i++)
+                {
+                    const u32 *w = (const u32 *)(recordBase + i * 0x230);
+                    length += sprintf(report + length,
+                        "model%02lu=%08lx,%08lx,%08lx,%08lx,%08lx,%08lx,%08lx,%08lx "
+                        "grid=%08lx%08lx\n", i, w[0], w[1], w[2], w[3],
+                        w[4], w[5], w[6], w[14],
+                        (u32)(g_sortGrid[i] >> 32), (u32)g_sortGrid[i]);
+                }
+                svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE,
+                                        localWindow, recordMapSize);
+            }
+            length += sprintf(report + length,
+                "model_records_result=%08lx\n", map);
+        }
+    }
     IFile file = {0};
     if (R_SUCCEEDED(IFile_Open(&file, ARCHIVE_SDMC,
         fsMakePath(PATH_EMPTY, ""),
-        fsMakePath(PATH_ASCII, "/3ds/Cthulhu/icon-class-v190.txt"),
+        fsMakePath(PATH_ASCII, "/3ds/Cthulhu/icon-model-v191.txt"),
         FS_OPEN_CREATE | FS_OPEN_WRITE)))
     {
         u64 written = 0;
@@ -2935,7 +2979,8 @@ Result CthulhuHomeMenu_RunBackgroundSort(u16 selectedAlgorithm,
         res = ApplySdSort(selectedAlgorithm, true, foldersFirst,
                           algorithmOut, mutationsOut);
         u32 iconOwnerAddress = R_SUCCEEDED(res) ?
-            ScanLiveIconClassV190(home) : 0;
+            ScanLiveIconClassV191(home) : 0;
+        (void)iconOwnerAddress;
         u32 rebuildOwnerAddress = 0x003827E4;
         u32 publishOwnerAddress = 0x003827D8;
         u32 ownerMatches = 1;
@@ -2958,7 +3003,9 @@ Result CthulhuHomeMenu_RunBackgroundSort(u16 selectedAlgorithm,
             if (request == 0) request = 1;
             commandChannel[0xD0 / 4] = rebuildOwnerAddress;
             commandChannel[0xE0 / 4] = publishOwnerAddress;
-            commandChannel[0x100 / 4] = iconOwnerAddress;
+            /* V191 is read-only: retain the validated owner in its report but
+               do not request the insufficient V190 callback. */
+            commandChannel[0x100 / 4] = 0;
             commandChannel[0xCC / 4] = request;
             svcFlushProcessDataCache(CUR_PROCESS_HANDLE,
                                      (u32)commandChannel & ~0xFFF, 0x1000);
