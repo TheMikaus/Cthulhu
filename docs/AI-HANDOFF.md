@@ -3192,3 +3192,46 @@ move. The report's record fields versus processed-grid IDs will identify
 whether the model stores title IDs directly or uses indices/handles, determining
 whether synchronization can be a bounded data update or must invoke its native
 builder.
+
+### 2026-08-11 — V191 proves title-ID records; V192 matches sorted SD titles
+
+V191 completed safely, committed the persistent sort, and left the crash
+directory empty. It resolved the live record array to `0x34636038`. Each record
+is `0x230` bytes and begins with a title ID split low/high across words 0/1.
+For example record 1 is title `0004001000021300`. The initial records are
+NAND/system titles, while the rebuilt processed grid is SD-only and its first
+positions are empty, so the initial index-by-index comparison was intentionally
+not interpreted as a position mapping.
+
+V192 performs the decisive read-only join. It maps the bounded full 420-record
+array (at most `0x3B000` bytes), walks nonempty entries in `g_sortGrid`, matches
+each title ID against record words 0/1, and logs up to 24 matches with grid
+index, record index, and record words 2-7 and 14. These include the packed fields
+consumed by the icon callback and reveal whether grid position/folder is stored
+directly or represented through indices/handles. Output is
+`/3ds/Cthulhu/icon-model-v192.txt`.
+
+V190's callback remains disabled (`channel+0x100=0`), and V192 makes no new
+native call or model write. Existing persistent sorter, controller,
+Notifications recovery, input suppression, folder, backup/readback, and
+shutdown behavior are unchanged. Live movement is not expected.
+
+Build/deployment:
+
+- visible label `Check HOME OSD V167 / Model V192`;
+- unchanged HOME symbols: start `0x14007024`, frame `0x1400722C`, observer
+  `0x14007438`, end `0x14007640`;
+- sole active `H:\luma\payloads\CthulhuHomeOSD192.firm`;
+- size 343552 bytes;
+- SHA-256
+  `525863189641B1269BDEE18AF8D315A0C0BB499DD0282B22C92273685677D731`;
+- V191 archived as
+  `H:\luma\disabled\CthulhuFrameworkHistory\CthulhuHomeOSD191-SUCCESS.firm`;
+- safe V190 and older rollbacks remain available;
+- crash directory empty and protected root firmware unchanged.
+
+Test one visibly opposite sort before Notifications, allow the read-only match
+report to finish, verify power off, and reinsert. Read `icon-model-v192.txt`.
+Consistent record fields correlated with grid index authorize a narrowly bounded
+model update plus the already-safe V190 callback; absence of correlation means
+trace the native model builder instead of writing records directly.

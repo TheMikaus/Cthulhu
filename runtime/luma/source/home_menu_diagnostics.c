@@ -2739,12 +2739,12 @@ static Result ApplySdSort(u16 selectedAlgorithm, bool stageFolders,
     return res;
 }
 
-static u32 ScanLiveIconClassV191(Handle home)
+static u32 ScanLiveIconClassV192(Handle home)
 {
     char *report = g_layoutBackrefReport;
     int length = sprintf(report,
         "Cthulhu live icon class scan\n"
-        "scan_version=1.9.1\nraw=%08lx\nprocessed=%08lx\n"
+        "scan_version=1.9.2\nraw=%08lx\nprocessed=%08lx\n"
         "wrapper=003827d8\nrebuild_subobject=003827e4\n",
         g_lastRawAddress, g_lastProcessedAddress);
     const u32 localWindow = 0x00900000;
@@ -2944,12 +2944,47 @@ static u32 ScanLiveIconClassV191(Handle home)
             }
             length += sprintf(report + length,
                 "model_records_result=%08lx\n", map);
+            const u32 fullMapSize = 0x3B000;
+            map = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE, localWindow,
+                home, recordPage, fullMapSize, 0);
+            u32 matched = 0;
+            if (R_SUCCEEDED(map))
+            {
+                const u8 *allRecords = (const u8 *)(localWindow + recordOffset);
+                for (u32 gridIndex = 0;
+                     gridIndex < CTH_PROCESSED_ENTRIES && matched < 24;
+                     gridIndex++)
+                {
+                    u64 titleId = g_sortGrid[gridIndex];
+                    if (titleId == UINT64_MAX || titleId == 0) continue;
+                    for (u32 recordIndex = 0; recordIndex < 420; recordIndex++)
+                    {
+                        const u32 *w = (const u32 *)(allRecords +
+                                                     recordIndex * 0x230);
+                        u64 recordTitle = ((u64)w[1] << 32) | w[0];
+                        if (recordTitle != titleId) continue;
+                        length += sprintf(report + length,
+                            "match%02lu grid=%lu record=%lu title=%08lx%08lx "
+                            "w2=%08lx w3=%08lx w4=%08lx w5=%08lx w6=%08lx "
+                            "w7=%08lx w14=%08lx\n", matched, gridIndex,
+                            recordIndex, w[1], w[0], w[2], w[3], w[4], w[5],
+                            w[6], w[7], w[14]);
+                        matched++;
+                        break;
+                    }
+                }
+                svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE,
+                                        localWindow, fullMapSize);
+            }
+            length += sprintf(report + length,
+                "matched_sd_records=%lu\nfull_model_result=%08lx\n",
+                matched, map);
         }
     }
     IFile file = {0};
     if (R_SUCCEEDED(IFile_Open(&file, ARCHIVE_SDMC,
         fsMakePath(PATH_EMPTY, ""),
-        fsMakePath(PATH_ASCII, "/3ds/Cthulhu/icon-model-v191.txt"),
+        fsMakePath(PATH_ASCII, "/3ds/Cthulhu/icon-model-v192.txt"),
         FS_OPEN_CREATE | FS_OPEN_WRITE)))
     {
         u64 written = 0;
@@ -2979,7 +3014,7 @@ Result CthulhuHomeMenu_RunBackgroundSort(u16 selectedAlgorithm,
         res = ApplySdSort(selectedAlgorithm, true, foldersFirst,
                           algorithmOut, mutationsOut);
         u32 iconOwnerAddress = R_SUCCEEDED(res) ?
-            ScanLiveIconClassV191(home) : 0;
+            ScanLiveIconClassV192(home) : 0;
         (void)iconOwnerAddress;
         u32 rebuildOwnerAddress = 0x003827E4;
         u32 publishOwnerAddress = 0x003827D8;
@@ -3003,7 +3038,7 @@ Result CthulhuHomeMenu_RunBackgroundSort(u16 selectedAlgorithm,
             if (request == 0) request = 1;
             commandChannel[0xD0 / 4] = rebuildOwnerAddress;
             commandChannel[0xE0 / 4] = publishOwnerAddress;
-            /* V191 is read-only: retain the validated owner in its report but
+            /* V192 is read-only: retain the validated owner in its report but
                do not request the insufficient V190 callback. */
             commandChannel[0x100 / 4] = 0;
             commandChannel[0xCC / 4] = request;
