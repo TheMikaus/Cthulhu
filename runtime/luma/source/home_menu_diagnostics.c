@@ -2739,12 +2739,12 @@ static Result ApplySdSort(u16 selectedAlgorithm, bool stageFolders,
     return res;
 }
 
-static u32 ScanLiveIconClassV193(Handle home)
+static u32 ScanLiveIconClassV194(Handle home)
 {
     char *report = g_layoutBackrefReport;
     int length = sprintf(report,
         "Cthulhu live icon class scan\n"
-        "scan_version=1.9.3\nraw=%08lx\nprocessed=%08lx\n"
+        "scan_version=1.9.4\nraw=%08lx\nprocessed=%08lx\n"
         "wrapper=003827d8\nrebuild_subobject=003827e4\n",
         g_lastRawAddress, g_lastProcessedAddress);
     const u32 localWindow = 0x00900000;
@@ -2904,6 +2904,9 @@ static u32 ScanLiveIconClassV193(Handle home)
         (unsigned long)ownerRefs, iconOwner, iconModel);
     if (iconModel != 0)
     {
+        u32 matchedGrid[24] = {0};
+        u32 matchedRecord[24] = {0};
+        u32 matchedRecords = 0;
         const u32 pointerAddress = iconModel + 0x398F8;
         const u32 pointerPage = pointerAddress & ~0xFFF;
         Result map = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE, localWindow,
@@ -2969,6 +2972,8 @@ static u32 ScanLiveIconClassV193(Handle home)
                             "w7=%08lx w14=%08lx\n", matched, gridIndex,
                             recordIndex, w[1], w[0], w[2], w[3], w[4], w[5],
                             w[6], w[7], w[14]);
+                        matchedGrid[matched] = gridIndex;
+                        matchedRecord[matched] = recordIndex;
                         matched++;
                         break;
                     }
@@ -2979,6 +2984,7 @@ static u32 ScanLiveIconClassV193(Handle home)
             length += sprintf(report + length,
                 "matched_sd_records=%lu\nfull_model_result=%08lx\n",
                 matched, map);
+            matchedRecords = matched;
         }
 
         /* HOME's normal UI accessors translate menu/grid positions through
@@ -3008,6 +3014,21 @@ static u32 ScanLiveIconClassV193(Handle home)
                     inlineMap[i + 3], inlineMap[i + 4], inlineMap[i + 5],
                     inlineMap[i + 6], inlineMap[i + 7], inlineMap[i + 8],
                     inlineMap[i + 9]);
+            for (u32 match = 0; match < matchedRecords; match++)
+            {
+                s32 first = -1;
+                u32 occurrences = 0;
+                for (u32 i = 0; i < 420; i++)
+                    if (inlineMap[i] == (s16)matchedRecord[match])
+                    {
+                        if (first < 0) first = (s32)i;
+                        occurrences++;
+                    }
+                length += sprintf(report + length,
+                    "inline_match%02lu grid=%lu record=%lu first=%ld count=%lu\n",
+                    match, matchedGrid[match], matchedRecord[match],
+                    (long)first, occurrences);
+            }
             svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE, localWindow, 0x1000);
         }
         length += sprintf(report + length,
@@ -3028,6 +3049,21 @@ static u32 ScanLiveIconClassV193(Handle home)
                         indices[i + 3], indices[i + 4], indices[i + 5],
                         indices[i + 6], indices[i + 7], indices[i + 8],
                         indices[i + 9]);
+                for (u32 match = 0; match < matchedRecords; match++)
+                {
+                    s32 first = -1;
+                    u32 occurrences = 0;
+                    for (u32 i = 0; i < 420; i++)
+                        if (indices[i] == (s16)matchedRecord[match])
+                        {
+                            if (first < 0) first = (s32)i;
+                            occurrences++;
+                        }
+                    length += sprintf(report + length,
+                        "indirect_match%02lu grid=%lu record=%lu first=%ld count=%lu\n",
+                        match, matchedGrid[match], matchedRecord[match],
+                        (long)first, occurrences);
+                }
                 svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE,
                                         localWindow, 0x1000);
             }
@@ -3038,7 +3074,7 @@ static u32 ScanLiveIconClassV193(Handle home)
     IFile file = {0};
     if (R_SUCCEEDED(IFile_Open(&file, ARCHIVE_SDMC,
         fsMakePath(PATH_EMPTY, ""),
-        fsMakePath(PATH_ASCII, "/3ds/Cthulhu/icon-model-v193.txt"),
+        fsMakePath(PATH_ASCII, "/3ds/Cthulhu/icon-model-v194.txt"),
         FS_OPEN_CREATE | FS_OPEN_WRITE)))
     {
         u64 written = 0;
@@ -3068,7 +3104,7 @@ Result CthulhuHomeMenu_RunBackgroundSort(u16 selectedAlgorithm,
         res = ApplySdSort(selectedAlgorithm, true, foldersFirst,
                           algorithmOut, mutationsOut);
         u32 iconOwnerAddress = R_SUCCEEDED(res) ?
-            ScanLiveIconClassV193(home) : 0;
+            ScanLiveIconClassV194(home) : 0;
         (void)iconOwnerAddress;
         u32 rebuildOwnerAddress = 0x003827E4;
         u32 publishOwnerAddress = 0x003827D8;
@@ -3092,7 +3128,7 @@ Result CthulhuHomeMenu_RunBackgroundSort(u16 selectedAlgorithm,
             if (request == 0) request = 1;
             commandChannel[0xD0 / 4] = rebuildOwnerAddress;
             commandChannel[0xE0 / 4] = publishOwnerAddress;
-            /* V193 is read-only: retain the validated owner in its report but
+            /* V194 is read-only: retain the validated owner in its report but
                do not request the insufficient V190 callback. */
             commandChannel[0x100 / 4] = 0;
             commandChannel[0xCC / 4] = request;

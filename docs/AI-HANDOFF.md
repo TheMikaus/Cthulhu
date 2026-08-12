@@ -3281,3 +3281,46 @@ indices with the V192 grid-to-record matches. The active table should contain
 the old record sequence; the following iteration should trace or invoke the
 native routine that rebuilds only that map, then use the already-safe V190
 refresh callback.
+
+### 2026-08-11 — V193 confirms two stale live maps; V194 inverts both
+
+V193 completed safely and produced `icon-model-v193.txt`; the crash directory
+remained empty and the persistent sort journal reached
+`shutdown-sort-committed` with result zero. The live model was again
+`0x34635E00`, its record array was `0x34636038`, and the V192 title join was
+reproduced: sorted grid positions 15 through 38 correspond to records 183 down
+through 160.
+
+The map header at `iconModel+0x44500` was
+`FFFFFFFF,0000FFFF,3466F6FE,0001FFFF`. The word at `+0x44508` is a valid but
+halfword-aligned HOME address (`0x3466F6FE`). The inline signed-16 map at
+`+0x4450E` begins `1,0,2,...,13,166,16,...`; the indirect map begins
+`1,0,2,...,13,187,360,15,16,...`. Neither can be overwritten from grid position
+alone because they clearly include distinct special/system translations.
+This confirms stale live indirection but not yet which entries represent the SD
+layout subset.
+
+V194 is another bounded read-only join. It retains both 60-entry samples, then
+scans all 420 halfwords in each already-mapped page for every one of the 24
+matched SD record indices. For each table and matched title it logs the first
+map position and occurrence count. This inversion will identify the exact
+contiguous or sparse SD subset while preserving special entries. Output is
+`/3ds/Cthulhu/icon-model-v194.txt`. No HOME memory is written, no new native
+function is called, and the insufficient V190 callback remains disabled.
+
+Build/deployment:
+
+- visible label `Check HOME OSD V167 / Map V194`;
+- sole active `H:\luma\payloads\CthulhuHomeOSD194.firm`;
+- size 344064 bytes;
+- SHA-256
+  `D196AA8B29EAFA9C7D38FC265D7B4D8A69C6FADEA421E7A6B83B0793B8AC4265`;
+- V193 archived as
+  `H:\luma\disabled\CthulhuFrameworkHistory\CthulhuHomeOSD193-SUCCESS.firm`;
+- protected root firmware remains unchanged at SHA-256
+  `10A8356230FF4C3E7D72FCFBC2F7E47CC12717DE2B6AF5122E081B51E023CC2A`.
+
+Test one opposite sort, verify overlay input and power off, then reinsert. Read
+the `inline_match` and `indirect_match` lines. Only after the active SD subset
+is proven should the next version update those signed indices and request the
+validated V190 refresh callback.
