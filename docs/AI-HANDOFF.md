@@ -3132,3 +3132,18 @@ V190 is the first working no-reboot sort; no movement means this 360-entry pass
 updates icon state but not the instantiated position binding, and the next work
 must trace the later draw/rebind consumer rather than call this routine again.
 Do not alter or redeploy until the visual outcome is added.
+
+### 2026-08-11 — V190 safe but icons did not visibly reorder
+
+The user confirmed the visual result: V190 did not crash, but the icons did not
+move. Combined with the exact counters above, this proves `0x001CA504` is a
+valid 360-entry model-state pass with the correct object ABI, but it is not the
+visible position rebind/publish boundary. Do not repeat or multiply this call;
+it already returned successfully once and its effect was insufficient.
+
+V190 remains the active safe payload. Next work must trace consumers of the
+dirty/model state produced by this object, especially related methods in the
+`0x0030AC58` function table and the dispatcher/draw stage that turns model
+positions into instantiated icon transforms. Preserve the dynamically derived
+owner and completed call as useful evidence, but do not add another speculative
+native call until the subsequent consumer and its ABI are identified.
