@@ -3451,3 +3451,54 @@ Have the user execute `TEST-PLAN.md` sections 1-10 in one session, then power
 off and reinsert once for section 11 evidence collection. Do not merge into
 master or tag a release until the live-map/runtime logs, compatibility journals,
 and crash directory have been inspected.
+
+### 2026-08-12 — RC1 folder-membership failure; RC2 safety guard installed
+
+The user stopped the RC1 regression at folder testing. After adding several
+icons to a folder, applying the sort caused the wrong visible titles to move;
+folder Before/After did not update live. Opening Notifications and returning to
+HOME caused the folder to appear in its correct persisted location. No crash
+dump was produced and the persistent transaction completed successfully.
+
+RC1 evidence proves this is a stale live-model problem, not a persistent-layout
+failure. The transaction contained 173 SD title records, including five folder
+children. The live inline/top-level map still supplied 168 members and RC1
+rewrote all 168; the indirect map rewrote 171 of 173. Its guard compared each
+map's old membership with its own filtered desired list, so equal counts did not
+prove that HOME's top-level membership matched the newly edited folder layout.
+Notifications triggered HOME's natural model reload, after which the persisted
+folder position became visible. Folder objects are special live records rather
+than title-ID records and were intentionally skipped by V195/RC1, explaining
+why Before/After itself did not move live.
+
+LumaHome RC2 commit `d3b259e` adds a conservative membership guard. It records
+all folder-contained record IDs separately and scans the inline/top-level map
+for them. If any are present, HOME's model is stale: RC2 performs no inline or
+indirect live permutation and does not request the native icon-refresh callback.
+The report logs `folder_records`, `inline_stale_folder_members`, and
+`live_update_deferred`. If no stale folder member exists, the previously proven
+membership-preserving title permutation remains enabled. This prevents RC1's
+wrong-title movement while work continues on invoking HOME's natural model
+reload directly. It does not claim live folder Before/After is fixed; that still
+requires the model-reload boundary demonstrated by Notifications.
+
+Build/deployment:
+
+- visible title `LUMAHOME 0.1 RC2`;
+- active payload `H:\luma\payloads\LumaHome010RC2.firm`;
+- size 345088 bytes;
+- SHA-256
+  `BADCC0463133C38A0D90B10BDE29FFEFCA3BA3B984D07D1D4EF22AD9E6E29819`;
+- RC1 archived as
+  `H:\luma\disabled\CthulhuFrameworkHistory\LumaHome010RC1-FOLDER-MAP-STALE.firm`;
+- root firmware unchanged at SHA-256
+  `10A8356230FF4C3E7D72FCFBC2F7E47CC12717DE2B6AF5122E081B51E023CC2A`;
+- RC2 pushed to `TheMikaus/LumaHome` branch
+  `lumahome/home-menu-framework`.
+
+Next test is intentionally narrow: boot RC2, verify branding, leave the current
+folder membership as-is, request A-Z and Z-A, and confirm no wrong title moves.
+If live update is deferred, open Notifications and return; confirm the persisted
+folder placement/order becomes correct and hooks still work. Reinsert once to
+inspect `live-map-0.1.0-rc2.txt`. Sleep/wake is explicitly not tested because
+the current device is a 2DS and is not a blocker for this safety iteration.
