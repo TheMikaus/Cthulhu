@@ -2995,3 +2995,51 @@ then reinsert. Read `framework-live-v167.txt`. A nonzero
 later guarded call. Zero means this callback is only dispatched through a
 specific event path; do not call it manually again without tracing the indirect
 dispatcher and context transform.
+
+### 2026-08-11 — V188 natural observer stayed zero; V189 scans icon class table
+
+V188 booted, navigated pages/folder, displayed the overlay, and powered off
+without a crash; the clean ARM11 dump directory stayed empty. Its automatic log
+reported `icon_refresh_owner=0` and `icon_refresh_calls=0`. Therefore HOME does
+not naturally enter `0x001CA504` during ordinary page/folder navigation. The
+routine is dispatched only for a more specific event, and the observer did not
+provide its ABI object.
+
+Offline binary reference analysis found the only literal `0x001CA504` at
+`0x0030AC88`, the final slot of a related icon-model function table beginning
+around `0x0030AC50/0x0030AC58`. Adjacent entries include `0x001C9CD4`,
+`0x00237E64`, `0x001FDF2C`, `0x001C8D98`, `0x001CA4B8`, and `0x001C8910`.
+This changes the interpretation of V186's `0x08032A3C` record: it contains a
+copied/selected table function plus other dispatch metadata, not a directly
+callable function/context pair. A live object should instead contain a pointer
+to the class table or a copied function pointer at a stable object offset.
+
+V189 keeps V188's logging-only entry observer and re-enables the safe post-sort
+bounded scan with exact additional targets `0x0030AC50`, `0x0030AC58`,
+`0x0030AC60`, and `0x001CA504`. It scans readable HOME regions through the
+fixed 64 KiB local window, logs surrounding words for class/function matches,
+and retains the prior wrapper/raw/grid evidence in
+`/3ds/Cthulhu/icon-class-v189.txt`. It makes no native refresh call. The sort
+path is the already-proven persistent transaction; live movement is not
+expected.
+
+Build/deployment:
+
+- visible label `Check HOME OSD V167 / Class V189`;
+- safe observer/stub symbols unchanged at `0x14007414`, start `0x14007024`,
+  frame `0x1400722C`, end `0x1400761C`;
+- sole active `H:\luma\payloads\CthulhuHomeOSD189.firm`;
+- size 342528 bytes;
+- SHA-256
+  `C7610490971A91D6EE04E1F122764453FE93EA288E9DEE404E17C48D2D5D471B`;
+- V188 archived as
+  `H:\luma\disabled\CthulhuFrameworkHistory\CthulhuHomeOSD188-SAFE.firm`;
+- successful V186 and confirmed V184 remain available;
+- protected root firmware unchanged at its established hash.
+
+Test one opposite-direction sort before Notifications, allow the read-only scan
+to finish, verify power off, and reinsert. Read `icon-class-v189.txt`. A class
+pointer in writable heap gives the real object base directly; copied function
+matches with consistent surrounding object pointers identify the dispatcher
+record layout. Any crash must be treated as V189 and rolled back to V188/V186,
+though no new native function is invoked in this iteration.

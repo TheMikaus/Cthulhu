@@ -2739,12 +2739,12 @@ static Result ApplySdSort(u16 selectedAlgorithm, bool stageFolders,
     return res;
 }
 
-static void __attribute__((unused)) ScanLiveLayoutOwnershipV186(Handle home)
+static void ScanLiveIconClassV189(Handle home)
 {
     char *report = g_layoutBackrefReport;
     int length = sprintf(report,
-        "Cthulhu live layout ownership scan\n"
-        "scan_version=1.8.6\nraw=%08lx\nprocessed=%08lx\n"
+        "Cthulhu live icon class scan\n"
+        "scan_version=1.8.9\nraw=%08lx\nprocessed=%08lx\n"
         "wrapper=003827d8\nrebuild_subobject=003827e4\n",
         g_lastRawAddress, g_lastProcessedAddress);
     const u32 localWindow = 0x00900000;
@@ -2752,9 +2752,11 @@ static void __attribute__((unused)) ScanLiveLayoutOwnershipV186(Handle home)
     u32 address = 0x08000000;
     u32 regions = 0, words = 0, rawRefs = 0, gridRefs = 0;
     u32 wrapperRefs = 0, rebuildRefs = 0;
+    u32 classRefs = 0, functionRefs = 0;
     u32 wrapperRefAddresses[16] = {0};
     while (address < 0x40000000 &&
-           rawRefs + gridRefs + wrapperRefs + rebuildRefs < 96)
+           rawRefs + gridRefs + wrapperRefs + rebuildRefs +
+           classRefs + functionRefs < 96)
     {
         MemInfo mem = {0}; PageInfo page = {0};
         Result query = svcQueryProcessMemory(&mem, &page, home, address);
@@ -2766,7 +2768,8 @@ static void __attribute__((unused)) ScanLiveLayoutOwnershipV186(Handle home)
         {
             bool mappedRegion = false;
             for (u32 offset = 0; offset < mem.size &&
-                 rawRefs + gridRefs + wrapperRefs + rebuildRefs < 96; )
+                 rawRefs + gridRefs + wrapperRefs + rebuildRefs +
+                 classRefs + functionRefs < 96; )
             {
                 u32 chunk = mem.size - offset;
                 if (chunk > chunkLimit) chunk = chunkLimit;
@@ -2778,7 +2781,8 @@ static void __attribute__((unused)) ScanLiveLayoutOwnershipV186(Handle home)
                 u32 count = chunk / 4;
                 words += count;
                 for (u32 i = 0; i < count &&
-                     rawRefs + gridRefs + wrapperRefs + rebuildRefs < 96; i++)
+                     rawRefs + gridRefs + wrapperRefs + rebuildRefs +
+                     classRefs + functionRefs < 96; i++)
                 {
                     const char *kind = NULL;
                     if (base[i] == g_lastRawAddress) { kind = "raw"; rawRefs++; }
@@ -2794,6 +2798,12 @@ static void __attribute__((unused)) ScanLiveLayoutOwnershipV186(Handle home)
                     }
                     else if (base[i] == 0x003827E4)
                     { kind = "rebuild"; rebuildRefs++; }
+                    else if (base[i] == 0x0030AC50 ||
+                             base[i] == 0x0030AC58 ||
+                             base[i] == 0x0030AC60)
+                    { kind = "class"; classRefs++; }
+                    else if (base[i] == 0x001CA504)
+                    { kind = "function"; functionRefs++; }
                     if (kind != NULL)
                     {
                         u32 a = mem.base_addr + offset + i * 4;
@@ -2869,15 +2879,17 @@ static void __attribute__((unused)) ScanLiveLayoutOwnershipV186(Handle home)
     }
     length += sprintf(report + length,
         "regions=%lu\nwords=%lu\nraw_refs=%lu\ngrid_refs=%lu\n"
-        "wrapper_refs=%lu\nrebuild_refs=%lu\nowner_refs=%lu\n",
+        "wrapper_refs=%lu\nrebuild_refs=%lu\nclass_refs=%lu\n"
+        "function_refs=%lu\nowner_refs=%lu\n",
         (unsigned long)regions, (unsigned long)words,
         (unsigned long)rawRefs, (unsigned long)gridRefs,
         (unsigned long)wrapperRefs, (unsigned long)rebuildRefs,
+        (unsigned long)classRefs, (unsigned long)functionRefs,
         (unsigned long)ownerRefs);
     IFile file = {0};
     if (R_SUCCEEDED(IFile_Open(&file, ARCHIVE_SDMC,
         fsMakePath(PATH_EMPTY, ""),
-        fsMakePath(PATH_ASCII, "/3ds/Cthulhu/layout-ownership-v186.txt"),
+        fsMakePath(PATH_ASCII, "/3ds/Cthulhu/icon-class-v189.txt"),
         FS_OPEN_CREATE | FS_OPEN_WRITE)))
     {
         u64 written = 0;
@@ -2905,8 +2917,8 @@ Result CthulhuHomeMenu_RunBackgroundSort(u16 selectedAlgorithm,
         svcSleepThread(20 * 1000 * 1000LL);
         res = ApplySdSort(selectedAlgorithm, true, foldersFirst,
                           algorithmOut, mutationsOut);
-        /* V187 replaces the diagnostic scan with the HOME-native icon refresh
-           callback discovered together with its bound wrapper context. */
+        if (R_SUCCEEDED(res))
+            ScanLiveIconClassV189(home);
         u32 rebuildOwnerAddress = 0x003827E4;
         u32 publishOwnerAddress = 0x003827D8;
         u32 ownerMatches = 1;
