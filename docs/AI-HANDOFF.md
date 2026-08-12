@@ -2820,3 +2820,58 @@ References outside known code literals provide the owner candidate for a later
 guarded complete-event call. If only code literals appear, use their natural
 caller chain for HOME-side object capture rather than another broad scan. Any
 crash or power-off regression requires immediate rollback to confirmed V184.
+
+### 2026-08-11 — V185 found live wrapper references; V186 traces their owners
+
+The V185 test completed safely. Persistent sorting committed with result zero,
+native request/ack 1, and native result zero. No new crash dump was created;
+the two dumps on the card predate V185. As expected, visible icon refresh was
+not yet claimed.
+
+`layout-ownership-v185.txt` scanned 15 readable regions and 5,978,112 words. It
+again found zero direct raw/grid references and zero direct references to
+rebuild subobject `0x003827E4`, but found six exact live references to wrapper
+`0x003827D8`:
+
+- heap/object locations `0x0800FCBC`, `0x08018B7C`, and `0x08032A44`;
+- stack locations `0x0FFFF5F4` and `0x0FFFF60C`;
+- layout allocation location `0x3467A684`.
+
+The last reference is especially concrete: the surrounding allocation contains
+other pointers into HOME's serialized layout area. The `0x080...` references
+are plausible runtime objects, while the stack references can reveal the active
+call chain. This is the first positive ownership evidence after V176-V182 and
+justifies a bounded second-level scan rather than another native call guess.
+
+V186 retains the same first pass and records up to 16 wrapper-reference
+addresses. It then performs one additional read-only pass through the same
+bounded readable regions, searching for pointers to those exact reference
+locations. Each match records the owner address, target address, and adjacent
+words in `/3ds/Cthulhu/layout-ownership-v186.txt`. This distinguishes heap
+objects that own/reference the wrapper-bearing subobjects and captures stack or
+manager links. It caps second-level results at 64, continues using the static
+12 KiB report buffer and fixed 64 KiB mapping window, and unmaps every chunk.
+
+No HOME hook, controller, rendering, sorting mutation, folder behavior,
+persistence, or native refresh call changed. Visible label is
+`Check HOME OSD V167 / Owner V186`. Build succeeded with the exact confirmed
+stub symbols `0x14007024`, `0x1400722C`, `0x140075F4`.
+
+Deployment:
+
+- sole active `H:\luma\payloads\CthulhuHomeOSD186.firm`;
+- size 342528 bytes;
+- SHA-256
+  `BB320CFE7B8A1A712DFCEB77B5EB0D8D206CC29C50511B3D5EE5FF314AB0447E`;
+- V185 archived as
+  `H:\luma\disabled\CthulhuFrameworkHistory\CthulhuHomeOSD185-SUCCESS.firm`;
+- confirmed V184 remains archived separately;
+- protected `H:\boot.firm` remains unchanged at
+  `10A8356230FF4C3E7D72FCFBC2F7E47CC12717DE2B6AF5122E081B51E023CC2A`.
+
+Test one opposite-direction sort before Notifications, let the two-pass scan
+finish, close the panel, verify power off, and reinsert. Live icon movement is
+not expected. Read `layout-ownership-v186.txt`; non-stack `owner_ref` results
+identify the next signature-validated HOME-side capture point. Zero owner refs
+means inspect the wider first-level object windows directly rather than adding
+another broad scan. Roll back to confirmed V184 on any safety regression.

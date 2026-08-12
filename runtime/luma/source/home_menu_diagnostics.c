@@ -2739,12 +2739,12 @@ static Result ApplySdSort(u16 selectedAlgorithm, bool stageFolders,
     return res;
 }
 
-static void ScanLiveLayoutOwnershipV185(Handle home)
+static void ScanLiveLayoutOwnershipV186(Handle home)
 {
     char *report = g_layoutBackrefReport;
     int length = sprintf(report,
         "Cthulhu live layout ownership scan\n"
-        "scan_version=1.8.5\nraw=%08lx\nprocessed=%08lx\n"
+        "scan_version=1.8.6\nraw=%08lx\nprocessed=%08lx\n"
         "wrapper=003827d8\nrebuild_subobject=003827e4\n",
         g_lastRawAddress, g_lastProcessedAddress);
     const u32 localWindow = 0x00900000;
@@ -2752,6 +2752,7 @@ static void ScanLiveLayoutOwnershipV185(Handle home)
     u32 address = 0x08000000;
     u32 regions = 0, words = 0, rawRefs = 0, gridRefs = 0;
     u32 wrapperRefs = 0, rebuildRefs = 0;
+    u32 wrapperRefAddresses[16] = {0};
     while (address < 0x40000000 &&
            rawRefs + gridRefs + wrapperRefs + rebuildRefs < 96)
     {
@@ -2784,7 +2785,13 @@ static void ScanLiveLayoutOwnershipV185(Handle home)
                     else if (base[i] == g_lastProcessedAddress)
                     { kind = "grid"; gridRefs++; }
                     else if (base[i] == 0x003827D8)
-                    { kind = "wrapper"; wrapperRefs++; }
+                    {
+                        kind = "wrapper";
+                        if (wrapperRefs < 16)
+                            wrapperRefAddresses[wrapperRefs] =
+                                mem.base_addr + offset + i * 4;
+                        wrapperRefs++;
+                    }
                     else if (base[i] == 0x003827E4)
                     { kind = "rebuild"; rebuildRefs++; }
                     if (kind != NULL)
@@ -2813,16 +2820,64 @@ static void ScanLiveLayoutOwnershipV185(Handle home)
         }
         address = next;
     }
+    u32 ownerRefs = 0;
+    address = 0x08000000;
+    while (address < 0x40000000 && ownerRefs < 64 &&
+           length < (int)sizeof(g_layoutBackrefReport) - 256)
+    {
+        MemInfo mem = {0}; PageInfo page = {0};
+        Result query = svcQueryProcessMemory(&mem, &page, home, address);
+        if (R_FAILED(query) || mem.size == 0) break;
+        u32 next = mem.base_addr + mem.size;
+        if (next <= address) break;
+        if (mem.state != MEMSTATE_FREE && (mem.perm & MEMPERM_READ) &&
+            mem.size <= 0x04000000)
+        {
+            for (u32 offset = 0; offset < mem.size && ownerRefs < 64; )
+            {
+                u32 chunk = mem.size - offset;
+                if (chunk > chunkLimit) chunk = chunkLimit;
+                Result map = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE,
+                    localWindow, home, mem.base_addr + offset, chunk, 0);
+                if (R_FAILED(map)) break;
+                const u32 *base = (const u32 *)localWindow;
+                u32 count = chunk / 4;
+                for (u32 i = 0; i < count && ownerRefs < 64; i++)
+                {
+                    for (u32 target = 0;
+                         target < wrapperRefs && target < 16; target++)
+                    {
+                        if (base[i] != wrapperRefAddresses[target]) continue;
+                        u32 a = mem.base_addr + offset + i * 4;
+                        length += sprintf(report + length,
+                            "owner_ref=%08lx target=%08lx m8=%08lx m4=%08lx "
+                            "p4=%08lx p8=%08lx\n", a, base[i],
+                            i >= 2 ? base[i - 2] : 0,
+                            i >= 1 ? base[i - 1] : 0,
+                            i + 1 < count ? base[i + 1] : 0,
+                            i + 2 < count ? base[i + 2] : 0);
+                        ownerRefs++;
+                        break;
+                    }
+                    if (length > (int)sizeof(g_layoutBackrefReport) - 256) break;
+                }
+                svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE, localWindow, chunk);
+                offset += chunk;
+            }
+        }
+        address = next;
+    }
     length += sprintf(report + length,
         "regions=%lu\nwords=%lu\nraw_refs=%lu\ngrid_refs=%lu\n"
-        "wrapper_refs=%lu\nrebuild_refs=%lu\n",
+        "wrapper_refs=%lu\nrebuild_refs=%lu\nowner_refs=%lu\n",
         (unsigned long)regions, (unsigned long)words,
         (unsigned long)rawRefs, (unsigned long)gridRefs,
-        (unsigned long)wrapperRefs, (unsigned long)rebuildRefs);
+        (unsigned long)wrapperRefs, (unsigned long)rebuildRefs,
+        (unsigned long)ownerRefs);
     IFile file = {0};
     if (R_SUCCEEDED(IFile_Open(&file, ARCHIVE_SDMC,
         fsMakePath(PATH_EMPTY, ""),
-        fsMakePath(PATH_ASCII, "/3ds/Cthulhu/layout-ownership-v185.txt"),
+        fsMakePath(PATH_ASCII, "/3ds/Cthulhu/layout-ownership-v186.txt"),
         FS_OPEN_CREATE | FS_OPEN_WRITE)))
     {
         u64 written = 0;
@@ -2851,7 +2906,7 @@ Result CthulhuHomeMenu_RunBackgroundSort(u16 selectedAlgorithm,
         res = ApplySdSort(selectedAlgorithm, true, foldersFirst,
                           algorithmOut, mutationsOut);
         if (R_SUCCEEDED(res))
-            ScanLiveLayoutOwnershipV185(home);
+            ScanLiveLayoutOwnershipV186(home);
         u32 rebuildOwnerAddress = 0x003827E4;
         u32 publishOwnerAddress = 0x003827D8;
         u32 ownerMatches = 1;
