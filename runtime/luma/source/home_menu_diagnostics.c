@@ -2739,12 +2739,12 @@ static Result ApplySdSort(u16 selectedAlgorithm, bool stageFolders,
     return res;
 }
 
-static u32 ScanLiveIconClassV194(Handle home)
+static u32 ScanLiveIconClassV195(Handle home)
 {
     char *report = g_layoutBackrefReport;
     int length = sprintf(report,
         "Cthulhu live icon class scan\n"
-        "scan_version=1.9.4\nraw=%08lx\nprocessed=%08lx\n"
+        "scan_version=1.9.5\nraw=%08lx\nprocessed=%08lx\n"
         "wrapper=003827d8\nrebuild_subobject=003827e4\n",
         g_lastRawAddress, g_lastProcessedAddress);
     const u32 localWindow = 0x00900000;
@@ -2907,6 +2907,8 @@ static u32 ScanLiveIconClassV194(Handle home)
         u32 matchedGrid[24] = {0};
         u32 matchedRecord[24] = {0};
         u32 matchedRecords = 0;
+        u16 desiredRecords[CTH_PROCESSED_ENTRIES] = {0};
+        u32 desiredCount = 0, desiredMissing = 0;
         const u32 pointerAddress = iconModel + 0x398F8;
         const u32 pointerPage = pointerAddress & ~0xFFF;
         Result map = svcMapProcessMemoryEx(CUR_PROCESS_HANDLE, localWindow,
@@ -2955,35 +2957,43 @@ static u32 ScanLiveIconClassV194(Handle home)
             {
                 const u8 *allRecords = (const u8 *)(localWindow + recordOffset);
                 for (u32 gridIndex = 0;
-                     gridIndex < CTH_PROCESSED_ENTRIES && matched < 24;
-                     gridIndex++)
+                     gridIndex < CTH_PROCESSED_ENTRIES; gridIndex++)
                 {
                     u64 titleId = g_sortGrid[gridIndex];
                     if (titleId == UINT64_MAX || titleId == 0) continue;
+                    bool found = false;
                     for (u32 recordIndex = 0; recordIndex < 420; recordIndex++)
                     {
                         const u32 *w = (const u32 *)(allRecords +
                                                      recordIndex * 0x230);
                         u64 recordTitle = ((u64)w[1] << 32) | w[0];
                         if (recordTitle != titleId) continue;
-                        length += sprintf(report + length,
-                            "match%02lu grid=%lu record=%lu title=%08lx%08lx "
-                            "w2=%08lx w3=%08lx w4=%08lx w5=%08lx w6=%08lx "
-                            "w7=%08lx w14=%08lx\n", matched, gridIndex,
-                            recordIndex, w[1], w[0], w[2], w[3], w[4], w[5],
-                            w[6], w[7], w[14]);
-                        matchedGrid[matched] = gridIndex;
-                        matchedRecord[matched] = recordIndex;
-                        matched++;
+                        if (desiredCount < CTH_PROCESSED_ENTRIES)
+                            desiredRecords[desiredCount++] = (u16)recordIndex;
+                        if (matched < 24)
+                        {
+                            length += sprintf(report + length,
+                                "match%02lu grid=%lu record=%lu title=%08lx%08lx "
+                                "w2=%08lx w3=%08lx w4=%08lx w5=%08lx w6=%08lx "
+                                "w7=%08lx w14=%08lx\n", matched, gridIndex,
+                                recordIndex, w[1], w[0], w[2], w[3], w[4], w[5],
+                                w[6], w[7], w[14]);
+                            matchedGrid[matched] = gridIndex;
+                            matchedRecord[matched] = recordIndex;
+                            matched++;
+                        }
+                        found = true;
                         break;
                     }
+                    if (!found) desiredMissing++;
                 }
                 svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE,
                                         localWindow, fullMapSize);
             }
             length += sprintf(report + length,
-                "matched_sd_records=%lu\nfull_model_result=%08lx\n",
-                matched, map);
+                "matched_sd_records=%lu\ndesired_records=%lu\n"
+                "desired_missing=%lu\nfull_model_result=%08lx\n",
+                matched, desiredCount, desiredMissing, map);
             matchedRecords = matched;
         }
 
@@ -3006,7 +3016,7 @@ static u32 ScanLiveIconClassV194(Handle home)
                 "index_header=%08lx,%08lx,%08lx,%08lx\n"
                 "index_indirect=%08lx\n", headerWords[0], headerWords[1],
                 headerWords[2], headerWords[3], indirectMap);
-            const volatile s16 *inlineMap = (const volatile s16 *)(header + 0x0E);
+            volatile s16 *inlineMap = (volatile s16 *)(header + 0x0E);
             for (u32 i = 0; i < 60; i += 10)
                 length += sprintf(report + length,
                     "inline%02lu=%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n", i,
@@ -3029,6 +3039,41 @@ static u32 ScanLiveIconClassV194(Handle home)
                     match, matchedGrid[match], matchedRecord[match],
                     (long)first, occurrences);
             }
+            u16 positions[420] = {0};
+            u16 ordered[420] = {0};
+            u32 positionCount = 0, orderedCount = 0;
+            for (u32 i = 0; i < 420; i++)
+                for (u32 d = 0; d < desiredCount; d++)
+                    if (inlineMap[i] == (s16)desiredRecords[d])
+                    {
+                        positions[positionCount++] = (u16)i;
+                        break;
+                    }
+            for (u32 d = 0; d < desiredCount; d++)
+                for (u32 i = 0; i < positionCount; i++)
+                    if (inlineMap[positions[i]] == (s16)desiredRecords[d])
+                    {
+                        ordered[orderedCount++] = desiredRecords[d];
+                        break;
+                    }
+            u32 inlineChanged = 0;
+            if (positionCount > 1 && positionCount == orderedCount)
+                for (u32 i = 0; i < positionCount; i++)
+                    if (inlineMap[positions[i]] != (s16)ordered[i])
+                    {
+                        inlineMap[positions[i]] = (s16)ordered[i];
+                        inlineChanged++;
+                    }
+            if (inlineChanged != 0)
+            {
+                svcFlushProcessDataCache(CUR_PROCESS_HANDLE,
+                    localWindow, 0x1000);
+                svcFlushProcessDataCache(home, indexHeaderPage, 0x1000);
+            }
+            length += sprintf(report + length,
+                "inline_positions=%lu\ninline_ordered=%lu\n"
+                "inline_changed=%lu\n", positionCount, orderedCount,
+                inlineChanged);
             svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE, localWindow, 0x1000);
         }
         length += sprintf(report + length,
@@ -3040,7 +3085,7 @@ static u32 ScanLiveIconClassV194(Handle home)
                 home, indirectPage, 0x1000, 0);
             if (R_SUCCEEDED(map))
             {
-                const volatile s16 *indices = (const volatile s16 *)(localWindow +
+                volatile s16 *indices = (volatile s16 *)(localWindow +
                     (indirectMap & 0xFFF));
                 for (u32 i = 0; i < 60; i += 10)
                     length += sprintf(report + length,
@@ -3064,6 +3109,41 @@ static u32 ScanLiveIconClassV194(Handle home)
                         match, matchedGrid[match], matchedRecord[match],
                         (long)first, occurrences);
                 }
+                u16 positions[420] = {0};
+                u16 ordered[420] = {0};
+                u32 positionCount = 0, orderedCount = 0;
+                for (u32 i = 0; i < 420; i++)
+                    for (u32 d = 0; d < desiredCount; d++)
+                        if (indices[i] == (s16)desiredRecords[d])
+                        {
+                            positions[positionCount++] = (u16)i;
+                            break;
+                        }
+                for (u32 d = 0; d < desiredCount; d++)
+                    for (u32 i = 0; i < positionCount; i++)
+                        if (indices[positions[i]] == (s16)desiredRecords[d])
+                        {
+                            ordered[orderedCount++] = desiredRecords[d];
+                            break;
+                        }
+                u32 indirectChanged = 0;
+                if (positionCount > 1 && positionCount == orderedCount)
+                    for (u32 i = 0; i < positionCount; i++)
+                        if (indices[positions[i]] != (s16)ordered[i])
+                        {
+                            indices[positions[i]] = (s16)ordered[i];
+                            indirectChanged++;
+                        }
+                if (indirectChanged != 0)
+                {
+                    svcFlushProcessDataCache(CUR_PROCESS_HANDLE,
+                        localWindow, 0x1000);
+                    svcFlushProcessDataCache(home, indirectPage, 0x1000);
+                }
+                length += sprintf(report + length,
+                    "indirect_positions=%lu\nindirect_ordered=%lu\n"
+                    "indirect_changed=%lu\n", positionCount, orderedCount,
+                    indirectChanged);
                 svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE,
                                         localWindow, 0x1000);
             }
@@ -3074,7 +3154,7 @@ static u32 ScanLiveIconClassV194(Handle home)
     IFile file = {0};
     if (R_SUCCEEDED(IFile_Open(&file, ARCHIVE_SDMC,
         fsMakePath(PATH_EMPTY, ""),
-        fsMakePath(PATH_ASCII, "/3ds/Cthulhu/icon-model-v194.txt"),
+        fsMakePath(PATH_ASCII, "/3ds/Cthulhu/icon-model-v195.txt"),
         FS_OPEN_CREATE | FS_OPEN_WRITE)))
     {
         u64 written = 0;
@@ -3104,7 +3184,7 @@ Result CthulhuHomeMenu_RunBackgroundSort(u16 selectedAlgorithm,
         res = ApplySdSort(selectedAlgorithm, true, foldersFirst,
                           algorithmOut, mutationsOut);
         u32 iconOwnerAddress = R_SUCCEEDED(res) ?
-            ScanLiveIconClassV194(home) : 0;
+            ScanLiveIconClassV195(home) : 0;
         (void)iconOwnerAddress;
         u32 rebuildOwnerAddress = 0x003827E4;
         u32 publishOwnerAddress = 0x003827D8;
@@ -3128,9 +3208,9 @@ Result CthulhuHomeMenu_RunBackgroundSort(u16 selectedAlgorithm,
             if (request == 0) request = 1;
             commandChannel[0xD0 / 4] = rebuildOwnerAddress;
             commandChannel[0xE0 / 4] = publishOwnerAddress;
-            /* V194 is read-only: retain the validated owner in its report but
-               do not request the insufficient V190 callback. */
-            commandChannel[0x100 / 4] = 0;
+            /* V195 only requests the already-validated refresh callback after
+               its membership-preserving live index-map permutation. */
+            commandChannel[0x100 / 4] = iconOwnerAddress;
             commandChannel[0xCC / 4] = request;
             svcFlushProcessDataCache(CUR_PROCESS_HANDLE,
                                      (u32)commandChannel & ~0xFFF, 0x1000);

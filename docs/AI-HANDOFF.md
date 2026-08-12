@@ -3324,3 +3324,56 @@ Test one opposite sort, verify overlay input and power off, then reinsert. Read
 the `inline_match` and `indirect_match` lines. Only after the active SD subset
 is proven should the next version update those signed indices and request the
 validated V190 refresh callback.
+
+### 2026-08-11 — V194 isolates membership; V195 guarded live reorder
+
+V194 completed safely, left no crash dump, and again committed the persistent
+sort with result zero. Its inversion proves that both maps contain the SD record
+IDs but at stale and different positions. In the inline map, most matched
+records 160-183 occur once around positions 159-179, with record 166 at special
+position 14 and two records absent. In the indirect map, all 24 occur exactly
+once but at sparse positions 161-201. Directly copying grid indices into either
+map would therefore overwrite special entries and remains forbidden.
+
+V195 performs the first guarded live mutation derived from these results. While
+HOME is still suspended after the successful persistent transaction, it joins
+every nonempty processed-grid title ID against all 420 live records to build the
+desired record-ID sequence. For each map independently it then:
+
+1. records only positions whose current value is one of those recognized SD
+   title records;
+2. filters the desired sorted sequence to the exact membership already present
+   in that map;
+3. refuses the write unless position and ordered-member counts match and contain
+   at least two entries;
+4. permutes only those signed-16 values in place, leaving all unknown, system,
+   folder/special, gap, and absent-title values untouched;
+5. flushes both local and HOME process caches for the one mapped page.
+
+The inline and indirect maps are handled separately, preserving top-level versus
+broader membership. The report logs desired/missing counts plus positions,
+ordered counts, and changed counts to
+`/3ds/Cthulhu/icon-model-v195.txt`. After HOME resumes, V195 requests the
+previously validated `0x001CA504` refresh through owner `0x08032918`; this is the
+same owner/call combination that completed safely in V190. Existing hook,
+Notifications recovery, controller, suppression, persistent folder handling,
+backup/readback, and power-off behavior are unchanged.
+
+Build/deployment:
+
+- visible label `Check HOME OSD V167 / Live V195`;
+- sole active `H:\luma\payloads\CthulhuHomeOSD195.firm`;
+- size 345088 bytes;
+- SHA-256
+  `AA1359D0D8FBEE85407452D557E99967FC9F00764BA08CE34396DE1A7EAE325E`;
+- V194 archived as
+  `H:\luma\disabled\CthulhuFrameworkHistory\CthulhuHomeOSD194-SUCCESS.firm`;
+- safe V190 and confirmed V184 remain available;
+- protected root firmware remains unchanged at SHA-256
+  `10A8356230FF4C3E7D72FCFBC2F7E47CC12717DE2B6AF5122E081B51E023CC2A`.
+
+Test a visibly opposite sort. Observe whether icons move immediately, whether
+the overlay stays responsive, and whether power off works. If HOME crashes,
+power off and reinsert without retrying; preserve the dump and restore V194 or
+V190. If it remains stable, reinsert and inspect V195 changed counts and callback
+telemetry before expanding live handling to folders.
