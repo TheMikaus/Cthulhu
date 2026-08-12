@@ -3377,3 +3377,35 @@ the overlay stays responsive, and whether power off works. If HOME crashes,
 power off and reinsert without retrying; preserve the dump and restore V194 or
 V190. If it remains stable, reinsert and inspect V195 changed counts and callback
 telemetry before expanding live handling to folders.
+
+### 2026-08-11 — Working V195 baseline published as LumaHome
+
+The user confirmed V195 appeared to sort live successfully and requested that
+the modified firmware become a separate project rather than remain embedded
+only in Cthulhu. A GitHub fork was created as
+`https://github.com/TheMikaus/LumaHome`. GitHub records it as a fork of
+`LumaTeam/Luma3DS`; its base remains upstream commit `d30ac8d` (after v13.4),
+and the GPLv3 license/history are preserved.
+
+The existing full Luma working tree at `runtime/.build/Luma3DS` is itself a
+nested Git repository. Its remotes are now:
+
+- `origin`: `https://github.com/TheMikaus/LumaHome.git`
+- `upstream`: `https://github.com/LumaTeam/Luma3DS.git`
+
+The complete V195 source baseline was committed there on branch
+`lumahome/home-menu-framework` as commit
+`ea91c96cf4fae5775260ca5013b213244385e25b` (`Add LumaHome HOME Menu framework
+baseline`) and pushed to origin. The commit contains 14 intentional source and
+documentation files (5,230 inserted lines); generated `.firm`, `.elf`, dumps,
+and captures remain ignored. `LUMAHOME.md` documents the V195 feature status,
+chainload safety, build method, upstream attribution, and the intentionally
+retained transitional `cthulhu_` internal identifiers.
+
+The exact committed standalone tree was rebuilt successfully with the existing
+Docker/devkitARM toolchain after commit and before push. No pull request was
+opened because this is the fork's own development baseline rather than a change
+proposed to upstream Luma3DS. The original Cthulhu branch and SD rollback payloads
+remain intact. Future HOME runtime development should occur in LumaHome; retain
+Cthulhu only as an optional companion/configuration project until the split is
+fully verified and historical build sources can be removed safely.
