@@ -3235,3 +3235,49 @@ report to finish, verify power off, and reinsert. Read `icon-model-v192.txt`.
 Consistent record fields correlated with grid index authorize a narrowly bounded
 model update plus the already-safe V190 callback; absence of correlation means
 trace the native model builder instead of writing records directly.
+
+### 2026-08-11 — V192 identifies position indirection; V193 captures the map
+
+V192 completed safely, committed the persistent sort, and left the crash
+directory empty. Its first 24 nonempty sorted-grid title IDs matched live icon
+records exactly, but at record indices 183 down through 160 while grid positions
+were 15 through 38. The sampled record fields did not contain a changing grid
+position. This proves the `0x230`-byte record array is an object store rather
+than an array that should be reordered wholesale.
+
+Static ARM disassembly then identified HOME's normal lookup boundary. Multiple
+UI accessors translate logical positions through signed 16-bit indices at
+`iconModel+0x4450E`, while related accessors load an adjacent pointer from
+`iconModel+0x44508` before indexing the same `0x230`-byte records. This explains
+the V190 result: its validated `0x001CA504` callback refreshed the existing live
+map after the serialized SD grid changed, so it correctly redrew the old order.
+Do not memcpy or swap full records; they contain live object state and pointers.
+
+V193 remains read-only. It preserves the complete V192 report, then maps one
+page around `iconModel+0x44500`, logs four header words, 60 signed inline values
+starting at `+0x4450E`, and, when the `+0x44508` word is a valid HOME address,
+maps and logs 60 signed values from that indirect array. Output is
+`/3ds/Cthulhu/icon-model-v193.txt`. No native function is called and the V190
+callback remains disabled (`channel+0x100=0`). Existing persistent sorting,
+controller, Notifications recovery, input suppression, folders, backup/readback,
+and shutdown behavior are unchanged. Live movement is not expected in V193.
+
+Build/deployment:
+
+- visible label `Check HOME OSD V167 / Map V193`;
+- sole active `H:\luma\payloads\CthulhuHomeOSD193.firm`;
+- size 344064 bytes;
+- SHA-256
+  `E82380B3C671858959F4376C9D9809C5504BAE7FB5121B208746F0C2EF449847`;
+- V192 archived as
+  `H:\luma\disabled\CthulhuFrameworkHistory\CthulhuHomeOSD192-SUCCESS.firm`;
+- crash directory empty;
+- protected `H:\boot.firm` remains unchanged at SHA-256
+  `10A8356230FF4C3E7D72FCFBC2F7E47CC12717DE2B6AF5122E081B51E023CC2A`.
+
+Test one visibly opposite sort and allow the report to finish, verify overlay
+input and power off, then reinsert the card. Compare the inline and indirect
+indices with the V192 grid-to-record matches. The active table should contain
+the old record sequence; the following iteration should trace or invoke the
+native routine that rebuilds only that map, then use the already-safe V190
+refresh callback.
