@@ -2933,3 +2933,65 @@ power off. Reinsert the SD either way. Inspect `framework-live-v167.txt` for
 owner `003827D8` and call count 1. A call count of 1 with no movement means the
 callback executed but a subsequent model-publication stage remains; a crash
 requires immediate V186 or confirmed V184 rollback and exact dump decoding.
+
+### 2026-08-11 — V187 crashed from wrong callback context; V188 observes real ABI
+
+V187 crashed immediately when applying a sort. The clean dump directory made
+the new file unambiguous. It was preserved locally as
+`runtime/.analysis/crash-v187-native-icon-refresh.dmp`, size 332 bytes,
+SHA-256 `708F420F9816EBB17A526D9F64B9DDFB57AF0045EF566BDF402A3A12B1BB9434`.
+V187 was moved to
+`H:\luma\disabled\CthulhuFrameworkHistory\CthulhuHomeOSD187-CRASHED.firm`
+and successful V186 was restored before further work.
+
+Exact dump decoding:
+
+- ARM11 core 0, data abort in HOME process `menu`;
+- PC `0x001CA524`, inside the proposed 360-icon callback;
+- LR `0x003053FC`, inside the injected frame hook;
+- `r5=0x003827D8`, proving the supplied context reached the function;
+- the callback loaded `[r5+0x128] = 0x000398F8` and then faulted while
+  dereferencing it at `0x001CA524`;
+- FAR/r0 `0x000398F8`, DFSR status 5 translation fault;
+- journal stopped at `atomic-home-unlocked`, and the icon-refresh counter
+  remained zero because the native call did not return.
+
+Conclusion: function `0x001CA504` remains a real 360-icon model pass, but the
+adjacent `0x003827D8` value in the discovered runtime record is not that
+function's direct `this` pointer. The V187 interpretation of the callback
+record ABI was wrong. Do not repeat the direct call with this context.
+
+V188 removes the unsafe direct call completely. It adds a signature-gated,
+logging-only branch at native entry `0x001CA504`, requiring original prologue
+`0xE92D5FF0`. `cthulhuIconRefreshObserveHook` records natural incoming `r0` and
+increments a count at channel `+0xF8/+0xFC`, restores temporary registers,
+replays the exact displaced `stmfd sp!,{r4-r11,r12,lr}`, and resumes at
+`0x001CA508`. It never invokes the callback, changes arguments, or writes the
+object. Existing framework logging already exposes these fields as
+`icon_refresh_owner` and `icon_refresh_calls`.
+
+All V184/V186 controller, Notifications recovery, input suppression, sorting,
+folder, persistence, and power-off behavior is otherwise unchanged. The
+preserved dump was removed from the SD after local archival, leaving the ARM11
+dump directory empty again.
+
+Build/deployment:
+
+- visible label `Check HOME OSD V167 / Observe V188`;
+- observer loader symbol `0x14007414`; stub start/frame/end
+  `0x14007024`/`0x1400722C`/`0x1400761C`;
+- sole active `H:\luma\payloads\CthulhuHomeOSD188.firm`;
+- size 340992 bytes;
+- SHA-256
+  `89ED3A44B4313C15771B044B7BB1C45A07160C99FEF0E3A1870D5F6239B2049F`;
+- successful V186 remains archived, including a post-V187 rollback copy;
+- protected root `H:\boot.firm` unchanged at
+  `10A8356230FF4C3E7D72FCFBC2F7E47CC12717DE2B6AF5122E081B51E023CC2A`.
+
+V188 test must not sort. Boot and verify the label, move across several HOME
+pages, open and close one folder, wait two seconds, verify L+Y and power off,
+then reinsert. Read `framework-live-v167.txt`. A nonzero
+`icon_refresh_owner` with positive calls supplies the real ABI object for a
+later guarded call. Zero means this callback is only dispatched through a
+specific event path; do not call it manually again without tracing the indirect
+dispatcher and context transform.

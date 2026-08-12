@@ -11,6 +11,7 @@
 .global cthulhuInputDispatcherHook
 .global cthulhuLayoutEventHook
 .global cthulhuIconControllerInitHook
+.global cthulhuIconRefreshObserveHook
 
 cthulhuHomeStubStart:
     stmfd sp!, {r0-r3, r12, lr}
@@ -168,16 +169,6 @@ cthulhuFrameHook:
     ldr r12, layoutPublishTarget
     blx r12
     str r0, [r4, #0xDC]
-    ldr r0, [r4, #0xE0]
-    cmp r0, #0
-    beq 24f
-    str r0, [r4, #0xF8]
-    ldr r12, iconRefreshTarget
-    blx r12
-    ldr r0, [r4, #0xFC]
-    add r0, r0, #1
-    str r0, [r4, #0xFC]
-24:
     ldr r0, [r4, #0xE4]
     cmp r0, #0
     beq 23f
@@ -258,7 +249,6 @@ frameTarget:     .word 0x00102298
 layoutRebuildTarget: .word 0x0013C680
 layoutPublishTarget: .word 0x00146D10
 layoutEventTarget: .word 0x001BA594
-iconRefreshTarget: .word 0x001CA504
 
 @ HOME's central navigation-event dispatcher. It receives a state mask in r0
 @ and normally returns that same value after invoking registered callbacks.
@@ -299,6 +289,20 @@ cthulhuIconControllerInitHook:
     str r1, [r12, #0xEC]
     ldr pc, iconControllerInitTarget
 iconControllerInitTarget: .word 0x001B9ED4
+
+@ Observe HOME's natural invocation of the confirmed 360-icon refresh routine.
+@ Record its real object pointer, replay the displaced prologue, and continue.
+cthulhuIconRefreshObserveHook:
+    stmfd sp!, {r1, r12}
+    ldr r12, channelAddress
+    str r0, [r12, #0xF8]
+    ldr r1, [r12, #0xFC]
+    add r1, r1, #1
+    str r1, [r12, #0xFC]
+    ldmfd sp!, {r1, r12}
+    stmfd sp!, {r4-r11, r12, lr}
+    ldr pc, iconRefreshObserveContinue
+iconRefreshObserveContinue: .word 0x001CA508
 
 @ HOME's central button-query wrappers. When the overlay owns input, report no
 @ buttons. Otherwise execute the displaced prologue and resume each function.
