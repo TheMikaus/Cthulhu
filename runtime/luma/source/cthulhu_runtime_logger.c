@@ -520,6 +520,9 @@ static void writeSnapshot(u32 pid, volatile u32 *v, u32 held, u32 pressed,
         v[0xD8 / 4], v[0xDC / 4], v[0xE0 / 4],
         v[0xE4 / 4], v[0xE8 / 4], v[0xEC / 4],
         v[0xF0 / 4], v[0xF4 / 4]);
+    n += sprintf(report + n,
+        "icon_refresh_owner=%08lx\nicon_refresh_calls=%lu\n",
+        v[0xF8 / 4], v[0xFC / 4]);
     IFile file;
     Result res = IFile_Open(&file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""),
         fsMakePath(PATH_ASCII, "/3ds/Cthulhu/framework-live-v167.txt"),

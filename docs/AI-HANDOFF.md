@@ -2875,3 +2875,61 @@ not expected. Read `layout-ownership-v186.txt`; non-stack `owner_ref` results
 identify the next signature-validated HOME-side capture point. Zero owner refs
 means inspect the wider first-level object windows directly rather than adding
 another broad scan. Roll back to confirmed V184 on any safety regression.
+
+### 2026-08-11 — V186 identifies bound icon callback; V187 attempts live refresh
+
+V186 completed safely, persistent sort committed with result zero, and the
+ARM11 dump directory remained empty after the old dumps were deliberately
+removed before the test. It found seven wrapper-bearing runtime records and
+zero second-level pointers to those record addresses. This means the records
+are likely callback/context storage rather than conventional owned subobjects.
+
+Three records placed executable HOME addresses directly beside wrapper
+`0x003827D8`: `0x001B34A4`, `0x001CA504`, and `0x001BC9B0`. Offline disassembly
+shows `0x001CA504` is the relevant icon refresh callback. It accepts its object
+in `r0`, walks all 360 icon slots, examines each icon's live model state, and
+invokes HOME's per-icon update path. Its runtime callback record at
+`0x08032A3C` stores function `0x001CA504`, then padding, then bound context
+`0x003827D8` eight bytes later. This supplies both native function and argument
+from live HOME memory rather than inference from similar static functions.
+
+V187 is the first guarded live-refresh attempt. After the already-proven
+frame-bound rebuild `0x0013C680` and publish `0x00146D10`, the HOME stub loads
+the existing publish owner `0x003827D8` and calls `0x001CA504` exactly once per
+sort request. It records the owner and call count at channel `+0xF8/+0xFC`,
+which `framework-live-v167.txt` now reports as `icon_refresh_owner` and
+`icon_refresh_calls`. The V186 scanner is retained in source but intentionally
+unused; no broad scan runs during V187 sorting.
+
+The complete V184 active-PID controller, Notifications recovery, direct HID
+input, input suppression, rendering, persistent mutation, folder logic,
+backup/readback, and graceful shutdown transaction are unchanged. This new
+native call has higher risk than read-only V186. Mitigations are exact callback
+and bound-context evidence, execution only at HOME's proven frame boundary,
+one call per acknowledged transaction, preserved caller registers, an empty
+crash-dump directory, and recoverable V184/V186 payloads.
+
+Version/build/deployment:
+
+- visible label `Check HOME OSD V167 / Live V187`;
+- stub start/frame unchanged at `0x14007024`/`0x1400722C`; end grows only to
+  `0x1400761C`, well below cave limit `0x14007F00`;
+- sole active payload `H:\luma\payloads\CthulhuHomeOSD187.firm`;
+- size 340992 bytes;
+- SHA-256
+  `415B3853A759EDA01DF88021BA4F78F48DD67631833CED7DF684FA9636028C43`;
+- V186 archived as
+  `H:\luma\disabled\CthulhuFrameworkHistory\CthulhuHomeOSD186-SUCCESS.firm`;
+- confirmed V184 remains available;
+- protected root `H:\boot.firm` unchanged at
+  `10A8356230FF4C3E7D72FCFBC2F7E47CC12717DE2B6AF5122E081B51E023CC2A`.
+
+Test conservatively: boot V187 and verify its label, open the panel before
+Notifications, select the visibly opposite direction, and press A once. Watch
+whether icons reorder immediately. If HOME crashes or becomes unstable, power
+off rather than retrying; the clean dump directory makes any dump attributable
+to V187. If it returns normally, close/reopen the panel, verify its input, and
+power off. Reinsert the SD either way. Inspect `framework-live-v167.txt` for
+owner `003827D8` and call count 1. A call count of 1 with no movement means the
+callback executed but a subsequent model-publication stage remains; a crash
+requires immediate V186 or confirmed V184 rollback and exact dump decoding.

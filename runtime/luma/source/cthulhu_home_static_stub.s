@@ -168,6 +168,16 @@ cthulhuFrameHook:
     ldr r12, layoutPublishTarget
     blx r12
     str r0, [r4, #0xDC]
+    ldr r0, [r4, #0xE0]
+    cmp r0, #0
+    beq 24f
+    str r0, [r4, #0xF8]
+    ldr r12, iconRefreshTarget
+    blx r12
+    ldr r0, [r4, #0xFC]
+    add r0, r0, #1
+    str r0, [r4, #0xFC]
+24:
     ldr r0, [r4, #0xE4]
     cmp r0, #0
     beq 23f
@@ -248,6 +258,7 @@ frameTarget:     .word 0x00102298
 layoutRebuildTarget: .word 0x0013C680
 layoutPublishTarget: .word 0x00146D10
 layoutEventTarget: .word 0x001BA594
+iconRefreshTarget: .word 0x001CA504
 
 @ HOME's central navigation-event dispatcher. It receives a state mask in r0
 @ and normally returns that same value after invoking registered callbacks.

@@ -2739,7 +2739,7 @@ static Result ApplySdSort(u16 selectedAlgorithm, bool stageFolders,
     return res;
 }
 
-static void ScanLiveLayoutOwnershipV186(Handle home)
+static void __attribute__((unused)) ScanLiveLayoutOwnershipV186(Handle home)
 {
     char *report = g_layoutBackrefReport;
     int length = sprintf(report,
@@ -2905,8 +2905,8 @@ Result CthulhuHomeMenu_RunBackgroundSort(u16 selectedAlgorithm,
         svcSleepThread(20 * 1000 * 1000LL);
         res = ApplySdSort(selectedAlgorithm, true, foldersFirst,
                           algorithmOut, mutationsOut);
-        if (R_SUCCEEDED(res))
-            ScanLiveLayoutOwnershipV186(home);
+        /* V187 replaces the diagnostic scan with the HOME-native icon refresh
+           callback discovered together with its bound wrapper context. */
         u32 rebuildOwnerAddress = 0x003827E4;
         u32 publishOwnerAddress = 0x003827D8;
         u32 ownerMatches = 1;
