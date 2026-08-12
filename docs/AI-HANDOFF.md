@@ -3409,3 +3409,45 @@ proposed to upstream Luma3DS. The original Cthulhu branch and SD rollback payloa
 remain intact. Future HOME runtime development should occur in LumaHome; retain
 Cthulhu only as an optional companion/configuration project until the split is
 fully verified and historical build sources can be removed safely.
+
+### 2026-08-11 — LumaHome 0.1.0-rc1 branded test candidate installed
+
+At the user's request, the working V195 behavior was prepared as the first
+LumaHome release candidate. User-facing branding now reads
+`LUMAHOME 0.1 RC1`; the Rosalina status item reads
+`LumaHome 0.1.0-rc1 status`; active runtime/map report headers identify
+LumaHome and release `0.1.0-rc1`. The overlay success message now says
+`LIVE MAP UPDATED / REBOOT NOT NEEDED` instead of the obsolete power-off
+instruction. Active reports are written to `/3ds/LumaHome/runtime.txt` and
+`/3ds/LumaHome/live-map-0.1.0-rc1.txt`.
+
+ABI-sensitive internal `cthulhu_` symbols and compatibility storage paths were
+intentionally not renamed. Persistent sorter inputs, backups, journal, and
+transaction files still use `/3ds/Cthulhu`; changing those in the branding pass
+would risk the already-validated transaction and hook ABI. The standalone docs
+state this explicitly.
+
+Standalone LumaHome commits pushed to `lumahome/home-menu-framework`:
+
+- `cdfec73c508486f90adcc23089b7c1944076b89f` — brand V195 as
+  LumaHome 0.1.0-rc1;
+- `46b902a` — add the complete 11-section hardware test plan in
+  `TEST-PLAN.md`.
+
+The renamed source rebuilt successfully. SD installation:
+
+- active test payload: `H:\luma\payloads\LumaHome010RC1.firm`;
+- size 345088 bytes;
+- SHA-256
+  `C51EA51FF5A7506AB073097BF87E73E5C00463676B2BA04A6D64770ED70FCC59`;
+- active payload directory now contains only `GodMode9.firm` and the LumaHome
+  candidate; five legacy Cthulhu diagnostic/OSD payloads were moved to the
+  existing disabled history directory;
+- `/3ds/LumaHome` was created for active reports;
+- protected `H:\boot.firm` remains unchanged at SHA-256
+  `10A8356230FF4C3E7D72FCFBC2F7E47CC12717DE2B6AF5122E081B51E023CC2A`.
+
+Have the user execute `TEST-PLAN.md` sections 1-10 in one session, then power
+off and reinsert once for section 11 evidence collection. Do not merge into
+master or tag a release until the live-map/runtime logs, compatibility journals,
+and crash directory have been inspected.
