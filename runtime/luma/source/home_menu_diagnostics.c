@@ -2739,12 +2739,12 @@ static Result ApplySdSort(u16 selectedAlgorithm, bool stageFolders,
     return res;
 }
 
-static void ScanLiveIconClassV189(Handle home)
+static u32 ScanLiveIconClassV190(Handle home)
 {
     char *report = g_layoutBackrefReport;
     int length = sprintf(report,
         "Cthulhu live icon class scan\n"
-        "scan_version=1.8.9\nraw=%08lx\nprocessed=%08lx\n"
+        "scan_version=1.9.0\nraw=%08lx\nprocessed=%08lx\n"
         "wrapper=003827d8\nrebuild_subobject=003827e4\n",
         g_lastRawAddress, g_lastProcessedAddress);
     const u32 localWindow = 0x00900000;
@@ -2753,6 +2753,7 @@ static void ScanLiveIconClassV189(Handle home)
     u32 regions = 0, words = 0, rawRefs = 0, gridRefs = 0;
     u32 wrapperRefs = 0, rebuildRefs = 0;
     u32 classRefs = 0, functionRefs = 0;
+    u32 iconOwner = 0, iconModel = 0;
     u32 wrapperRefAddresses[16] = {0};
     while (address < 0x40000000 &&
            rawRefs + gridRefs + wrapperRefs + rebuildRefs +
@@ -2803,7 +2804,21 @@ static void ScanLiveIconClassV189(Handle home)
                              base[i] == 0x0030AC60)
                     { kind = "class"; classRefs++; }
                     else if (base[i] == 0x001CA504)
-                    { kind = "function"; functionRefs++; }
+                    {
+                        kind = "function";
+                        functionRefs++;
+                        if (i >= 0x120 / 4 && i + 2 < count)
+                        {
+                            u32 candidate = mem.base_addr + offset + i * 4 - 0x120;
+                            u32 model = base[i + 2];
+                            if (candidate >= 0x08000000 &&
+                                model >= 0x08000000 && model < 0x40000000)
+                            {
+                                iconOwner = candidate;
+                                iconModel = model;
+                            }
+                        }
+                    }
                     if (kind != NULL)
                     {
                         u32 a = mem.base_addr + offset + i * 4;
@@ -2880,16 +2895,17 @@ static void ScanLiveIconClassV189(Handle home)
     length += sprintf(report + length,
         "regions=%lu\nwords=%lu\nraw_refs=%lu\ngrid_refs=%lu\n"
         "wrapper_refs=%lu\nrebuild_refs=%lu\nclass_refs=%lu\n"
-        "function_refs=%lu\nowner_refs=%lu\n",
+        "function_refs=%lu\nowner_refs=%lu\n"
+        "icon_owner=%08lx\nicon_model=%08lx\n",
         (unsigned long)regions, (unsigned long)words,
         (unsigned long)rawRefs, (unsigned long)gridRefs,
         (unsigned long)wrapperRefs, (unsigned long)rebuildRefs,
         (unsigned long)classRefs, (unsigned long)functionRefs,
-        (unsigned long)ownerRefs);
+        (unsigned long)ownerRefs, iconOwner, iconModel);
     IFile file = {0};
     if (R_SUCCEEDED(IFile_Open(&file, ARCHIVE_SDMC,
         fsMakePath(PATH_EMPTY, ""),
-        fsMakePath(PATH_ASCII, "/3ds/Cthulhu/icon-class-v189.txt"),
+        fsMakePath(PATH_ASCII, "/3ds/Cthulhu/icon-class-v190.txt"),
         FS_OPEN_CREATE | FS_OPEN_WRITE)))
     {
         u64 written = 0;
@@ -2897,6 +2913,7 @@ static void ScanLiveIconClassV189(Handle home)
         IFile_SetSize(&file, (u64)length);
         IFile_Close(&file);
     }
+    return iconOwner;
 }
 
 Result CthulhuHomeMenu_RunBackgroundSort(u16 selectedAlgorithm,
@@ -2917,8 +2934,8 @@ Result CthulhuHomeMenu_RunBackgroundSort(u16 selectedAlgorithm,
         svcSleepThread(20 * 1000 * 1000LL);
         res = ApplySdSort(selectedAlgorithm, true, foldersFirst,
                           algorithmOut, mutationsOut);
-        if (R_SUCCEEDED(res))
-            ScanLiveIconClassV189(home);
+        u32 iconOwnerAddress = R_SUCCEEDED(res) ?
+            ScanLiveIconClassV190(home) : 0;
         u32 rebuildOwnerAddress = 0x003827E4;
         u32 publishOwnerAddress = 0x003827D8;
         u32 ownerMatches = 1;
@@ -2941,6 +2958,7 @@ Result CthulhuHomeMenu_RunBackgroundSort(u16 selectedAlgorithm,
             if (request == 0) request = 1;
             commandChannel[0xD0 / 4] = rebuildOwnerAddress;
             commandChannel[0xE0 / 4] = publishOwnerAddress;
+            commandChannel[0x100 / 4] = iconOwnerAddress;
             commandChannel[0xCC / 4] = request;
             svcFlushProcessDataCache(CUR_PROCESS_HANDLE,
                                      (u32)commandChannel & ~0xFFF, 0x1000);

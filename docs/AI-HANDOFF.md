@@ -3043,3 +3043,65 @@ pointer in writable heap gives the real object base directly; copied function
 matches with consistent surrounding object pointers identify the dispatcher
 record layout. Any crash must be treated as V189 and rolled back to V188/V186,
 though no new native function is invoked in this iteration.
+
+### 2026-08-11 — V189 proves actual object layout; V190 retries with validated owner
+
+V189 completed safely, persistent sorting committed with result zero, and the
+clean crash directory remained empty. The class scan found one exact live
+`0x001CA504` slot at `0x08032A38` and no direct class-table pointers. Its
+surrounding words establish the full object layout:
+
+- object base `0x08032918`;
+- callback slot `object+0x120 = 0x001CA504`;
+- callback-required model field `object+0x128 = 0x34635E00`, a valid HOME heap
+  pointer;
+- wrapper field `object+0x12C = 0x003827D8`.
+
+This exactly explains V187. V187 passed the wrapper field at `+0x12C` as if it
+were the object base, so the callback's `[r0+0x128]` load read unrelated global
+value `0x000398F8` and faulted. The correct ABI object is dynamically derived as
+the live function-slot address minus `0x120`; it must not be hard-coded because
+the `0x080...` heap location may change across boots.
+
+V190 upgrades `ScanLiveIconClassV190` to derive this owner only when both
+conditions hold: an exact function slot `0x001CA504` exists in readable HOME
+memory, and its `+8` word (object `+0x128`) is a plausible HOME pointer in
+`0x08000000..0x3FFFFFFF`. The report now writes
+`/3ds/Cthulhu/icon-class-v190.txt` with `icon_owner` and `icon_model`. Rosalina
+publishes validated owner to channel `+0x100`; zero causes the HOME call to be
+skipped.
+
+At the existing acknowledged frame-bound rebuild sequence, HOME loads only that
+validated dynamic owner and calls `0x001CA504` once. The retained entry observer
+records actual incoming owner/call count at `+0xF8/+0xFC`; completion is recorded
+at `+0x104`. Framework logging exposes requested owner and completion separately.
+No wrapper address is used as the callback object.
+
+This remains a higher-risk native-call iteration, but unlike V187 both the
+function and ABI object layout are now proven from the same live object. Existing
+controller, Notifications recovery, input suppression, rendering, persistent
+sort, folder, backup/readback, and power-off logic are unchanged. The empty dump
+directory makes any crash attributable to V190.
+
+Build/deployment:
+
+- visible label `Check HOME OSD V167 / Live V190`;
+- stub start/frame/observer/end `0x14007024`, `0x1400722C`, `0x14007438`,
+  `0x14007640`, still below the cave limit;
+- sole active `H:\luma\payloads\CthulhuHomeOSD190.firm`;
+- size 342528 bytes;
+- SHA-256
+  `C1769CDCD7804A01C8B5032F1F906651C2E5C011EB9AF30A7402AB750D146FAA`;
+- V189 archived as
+  `H:\luma\disabled\CthulhuFrameworkHistory\CthulhuHomeOSD189-SUCCESS.firm`;
+- V188/V186/V184 remain available;
+- protected root firmware remains unchanged.
+
+Test conservatively: verify the V190 label and apply one visibly opposite sort
+before Notifications. Watch for immediate icon movement. If it crashes or HOME
+becomes unstable, power off without retrying and reinsert. If normal, close the
+panel, verify input and power off, then reinsert. Inspect the V190 report and
+framework fields: requested owner, observed owner, observer call count, and
+completion must agree. Completion 1 with no movement means this pass updates
+per-icon state but a later draw/rebind stage remains; a crash requires exact
+dump decoding and immediate V189 rollback.
