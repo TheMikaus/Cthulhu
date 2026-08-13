@@ -3738,3 +3738,45 @@ Test only Before+A-Z, then Notifications reload and reinsert. Expected log:
 folder new=14, first title new=15. Visually the folder should precede the first
 title without adding a leading reserved-area gap. Do not run After until this
 isolated insertion is confirmed.
+
+### 2026-08-12 — RC7 transaction valid but live Launcher stayed stale; RC8 syncs it
+
+RC7 requested exactly the intended insertion: folder new=14 and `3D Altered
+Beast` new=15, with all 168 top-level titles shifted forward by one. The
+targeted Launcher file writer reported one planned/write/verified mutation and
+result zero. However, after Notifications the folder remained visually at its
+old location and extra gaps appeared. The persistence audit showed HOME had
+rewritten all 168 title positions back (`position_mismatches=168`).
+
+Direct snapshot parsing resolved the reconciliation source. The committed SD
+snapshot had `3D Altered Beast` at 15, while the post-reload current snapshot had
+it back at 14. The confirmed live Launcher resident object at `0x346DED88` still
+reported folder 0 at old position 181. The existing code mapped and read this
+object but never copied planned folder positions into it. Notifications did not
+reconstruct that object in this lifecycle, so HOME reconciled the shifted titles
+against the stale live folder and undid the insertion.
+
+RC8 commit `ab956c4` adds a narrowly bounded live Launcher synchronization after
+the persistent commits succeed and while HOME is still suspended. For each
+validated planned folder it writes exactly one signed 16-bit position at
+`launcherAddress + CTH_FOLDER_POSITION_OFFSET - 8 + folderId*2`, immediately
+reads it back, and aborts with `-106` if verification fails. It flushes the local
+and HOME process cache for the already-mapped Launcher object and logs address,
+write count, and result under `[LIVE_FOLDER_WRITE]`. No folder names, numbers,
+or other Launcher fields are modified.
+
+Build/deployment:
+
+- visible title `LUMAHOME 0.1 RC8`;
+- active payload `H:\luma\payloads\LumaHome010RC8.firm`;
+- size 345600 bytes;
+- SHA-256
+  `1B663AAE086BF7E3C301BA50848F4F97D4C1E366EEC63A978952B392AC1730EA`;
+- RC7 archived as `LumaHome010RC7-LIVE-LAUNCHER-STALE.firm`;
+- root firmware unchanged;
+- RC8 pushed to `lumahome/home-menu-framework`.
+
+Test only Before+A-Z. First observe whether folder/title movement occurs live;
+then Notifications reload, verify folder before first title with no extra gaps,
+and reinsert. Inspect `[LIVE_FOLDER_WRITE]`, folder new=14, first title new=15,
+and the post-reload audit before testing After.
