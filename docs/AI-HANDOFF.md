@@ -3531,3 +3531,28 @@ installed and RC2 remains active on the SD card. Do not copy or push RC3 until
 the exact committed source builds successfully. Resume by rerunning the normal
 Docker build, verify the RC3 strings/hash, archive RC2, install
 `LumaHome010RC3.firm`, push commit `0476e85`, and test the deferred UI path.
+
+### 2026-08-12 — RC3 build retry succeeded and candidate installed
+
+The user reported that no approval prompt had appeared. Retrying the same
+Docker/devkitARM build then completed normally. The output size changed from
+RC2 and the final build succeeded through Rosalina link, sysmodule packaging,
+and `boot.firm` creation.
+
+Deployment:
+
+- active payload `H:\luma\payloads\LumaHome010RC3.firm`;
+- size 345600 bytes;
+- SHA-256
+  `BCE1EBF007255D351742DEE6C5E4E2A383DBE84DDA17597E9CA12E158F32BD74`;
+- RC2 archived as
+  `H:\luma\disabled\CthulhuFrameworkHistory\LumaHome010RC2-SAFE-DEFER-GUARD.firm`;
+- active payload directory contains only GodMode9 and RC3;
+- protected root firmware remains unchanged at SHA-256
+  `10A8356230FF4C3E7D72FCFBC2F7E47CC12717DE2B6AF5122E081B51E023CC2A`.
+
+Standalone LumaHome commit `0476e85` was pushed to
+`lumahome/home-menu-framework`. Test the same stale-folder scenario once. The
+expected outcome is an immediate successful persistent transaction with the
+deferred message, no wrong icon movement, no three-second callback timeout, and
+correct folder/title positions after HOME's model reload through Notifications.
