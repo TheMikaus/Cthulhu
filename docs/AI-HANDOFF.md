@@ -3697,3 +3697,44 @@ acknowledged, and no crash dump. No code or payload change was made. To validate
 the collision fix, perform only Before+A-Z, reload HOME through Notifications,
 and reinsert before performing After; the transaction should show folder new=14
 and first title new=15.
+
+### 2026-08-12 — Isolated RC6 Before test proves reserved-gap issue; RC7 inserts
+
+The isolated Before+A-Z transaction showed folder new=13 and first title
+(`3D Altered Beast`) new=14. The targeted Launcher writer wrote and verified the
+folder value successfully, and the SD title layout read back with zero byte or
+position mismatches. Nevertheless HOME left the folder visually unmoved after
+Notifications and showed additional gaps. This proves coordinates below the
+first usable title position are not valid folder insertion targets on this HOME
+layout; writing into the reserved leading area is accepted by the file format but
+not interpreted as a visible folder slot.
+
+RC7 commit `b3e0267` implements insertion instead of subtraction. For Before:
+
+- the folder begins at the existing first-title position;
+- every top-level title position is shifted forward by the number of folders;
+- relative gaps between titles are preserved;
+- bounds are checked and return `-105` rather than overflowing the 360-slot
+  layout;
+- the shifted positions are written into the normal persistent title records
+  before grid rebuild and transaction commit.
+
+For the captured layout this requests folder 14, first title 15, and shifts the
+remaining top-level coordinates by one. After remains last-title+1 and is
+unchanged.
+
+Build/deployment:
+
+- visible title `LUMAHOME 0.1 RC7`;
+- active payload `H:\luma\payloads\LumaHome010RC7.firm`;
+- size 345600 bytes;
+- SHA-256
+  `1B35ED5DBEB13807BD9607C133BA0301C345B28728BA839BE362C8A577C9226B`;
+- RC6 archived as `LumaHome010RC6-RESERVED-GAP.firm`;
+- root firmware unchanged;
+- RC7 pushed to `lumahome/home-menu-framework`.
+
+Test only Before+A-Z, then Notifications reload and reinsert. Expected log:
+folder new=14, first title new=15. Visually the folder should precede the first
+title without adding a leading reserved-area gap. Do not run After until this
+isolated insertion is confirmed.
