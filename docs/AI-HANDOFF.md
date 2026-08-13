@@ -3556,3 +3556,45 @@ Standalone LumaHome commit `0476e85` was pushed to
 expected outcome is an immediate successful persistent transaction with the
 deferred message, no wrong icon movement, no three-second callback timeout, and
 correct folder/title positions after HOME's model reload through Notifications.
+
+### 2026-08-12 — RC3 overcorrected; RC4 restores live title sorting
+
+The user correctly objected that RC2/RC3 disabled the live icon sorting already
+proven by V195 and regression sections 1-4. The folder safety response was too
+broad: detecting any stale folder-contained title disabled the entire inline
+permutation and therefore removed normal A-Z/Z-A live movement.
+
+RC4 commit `65164b9` restores live sorting while isolating the stale subset. It
+now derives separate record sequences for freshly persisted top-level titles
+and folder-contained titles. For the inline/top-level map it:
+
+- finds and leaves every stale folder-child record untouched;
+- finds positions containing records that are still top-level;
+- orders only those top-level members according to the fresh sorted grid;
+- requires the selected position/member counts to match before writing;
+- performs the validated refresh callback whenever those unaffected records
+  changed.
+
+The indirect map retains the V195 membership-preserving full-title permutation.
+When stale folder children were skipped, the overlay reports
+`LIVE SORT PARTIAL / FOLDER MODEL STALE / REOPEN HOME`; this is informational,
+not failure. Normal sessions without stale membership retain the standard live
+success state. Folder-object movement still waits for HOME's natural model
+reload and remains the next architectural task.
+
+Build/deployment:
+
+- visible title `LUMAHOME 0.1 RC4`;
+- active payload `H:\luma\payloads\LumaHome010RC4.firm`;
+- size 345600 bytes;
+- SHA-256
+  `324A55EE4770DF96F0FA51F48BF928C491239281247C9A5592B3F9BA1EBA1D9F`;
+- RC3 archived as
+  `H:\luma\disabled\CthulhuFrameworkHistory\LumaHome010RC3-OVERBROAD-DEFER.firm`;
+- root firmware unchanged;
+- RC4 pushed to `lumahome/home-menu-framework`.
+
+Test A-Z, Z-A, and A-Z in the same session before opening Notifications. The
+unaffected top-level icons must move live each time and no wrong icon may take
+another title's place. The stale folder-child icons may remain until HOME reload;
+after Notifications, verify folder location/contents and repeat one live sort.
