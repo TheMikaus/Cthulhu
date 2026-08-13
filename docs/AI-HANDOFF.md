@@ -3502,3 +3502,32 @@ If live update is deferred, open Notifications and return; confirm the persisted
 folder placement/order becomes correct and hooks still work. Reinsert once to
 inspect `live-map-0.1.0-rc2.txt`. Sleep/wake is explicitly not tested because
 the current device is a 2DS and is not a blocker for this safety iteration.
+
+### 2026-08-12 — RC2 guard succeeds; false failure isolated; RC3 source committed
+
+RC2 correctly detected the stale HOME model: 5 folder-contained records existed,
+3 were still present in the inline/top-level map, `inline_changed=0`,
+`indirect_changed=0`, and `live_update_deferred=1`. No wrong title was moved,
+the persistent Z-A transaction committed 173 titles and one folder successfully,
+and no crash dump was produced.
+
+The overlay nevertheless showed failure `0xFFFFFFE0` (`-32`). This was not a
+sort failure. RC2 set the icon refresh owner to zero but still incremented the
+HOME callback request and waited for an acknowledgement. Because the callback
+was intentionally disabled, no acknowledgement arrived and the timeout replaced
+the successful transaction result.
+
+RC3 source commit `0476e85` fixes that control flow. Deferred operations skip
+the callback request/wait entirely, return the successful persistent result, set
+a shared deferred flag, and display `SAVED SAFELY / LIVE MODEL STALE / REOPEN
+HOME`. Genuine callback/live updates retain the existing success path; genuine
+transaction errors retain failure. RC3 branding and report path are
+`LUMAHOME 0.1 RC3` and `/3ds/LumaHome/live-map-0.1.0-rc3.txt`.
+
+The existing Docker build command was attempted twice, but the automatic
+permission-approval review timed out on both attempts before tool output was
+returned. The local `boot.firm` hash remained the RC2 hash, so RC3 was not
+installed and RC2 remains active on the SD card. Do not copy or push RC3 until
+the exact committed source builds successfully. Resume by rerunning the normal
+Docker build, verify the RC3 strings/hash, archive RC2, install
+`LumaHome010RC3.firm`, push commit `0476e85`, and test the deferred UI path.
