@@ -3598,3 +3598,44 @@ Test A-Z, Z-A, and A-Z in the same session before opening Notifications. The
 unaffected top-level icons must move live each time and no wrong icon may take
 another title's place. The stale folder-child icons may remain until HOME reload;
 after Notifications, verify folder location/contents and repeat one live sort.
+
+### 2026-08-12 — RC4 third-sort crash was Rosalina stack overflow; RC5 installed
+
+RC4 completed the first two live refresh requests, but crashed on the third sort.
+The RC4 report showed `inline_changed=164`, `indirect_changed=172`, two refresh
+requests acknowledged, and no native callback failure. The 252-byte dump was
+preserved locally as `runtime/.analysis/crash-rc4-partial-live-sort.dmp` before
+removal from the SD card.
+
+The dump identifies process `rosalina`, not HOME. Its saved PC was
+`0x1403CF98`, inside Rosalina's BSS/non-executable region (the ELF executable
+segment ends at `0x1402A5B8`). This is a corrupted return address. The runtime
+thread has only an 8 KB stack, while RC4 added large automatic arrays: two
+`CTH_PROCESSED_ENTRIES` record lists plus multiple 420-entry position/order
+arrays. Repeated scans overflowed the thread stack and corrupted control flow.
+
+RC5 commit `99c070a` preserves the RC4 partial live-sort algorithm but moves all
+large desired/top-level/folder and inline/indirect work arrays into static BSS.
+The scan now keeps only small counters and matched samples on the runtime stack.
+Because the background sort is serialized, these static work buffers have no
+concurrent consumer. No hook address, map permutation rule, refresh callback, or
+persistent transaction behavior changed.
+
+Build/deployment:
+
+- visible title `LUMAHOME 0.1 RC5`;
+- active payload `H:\luma\payloads\LumaHome010RC5.firm`;
+- size 345600 bytes;
+- SHA-256
+  `237B2D534D94240DBFBD3EF7ACFC161305A213D2D98744FA3D4B6146BCA7467C`;
+- RC4 archived as
+  `H:\luma\disabled\CthulhuFrameworkHistory\LumaHome010RC4-CRASH-PARTIAL-MAP.firm`;
+- RC3 remains archived as a safe no-live-update rollback;
+- SD crash directory cleared only after preserving the dump locally;
+- protected root firmware unchanged;
+- RC5 pushed to `lumahome/home-menu-framework`.
+
+Repeat A-Z, Z-A, A-Z, then Z-A (four sorts) in one session. This specifically
+crosses RC4's third-sort failure point. Verify live movement/no wrong icons after
+each, then Notifications reload and folder integrity. Stop immediately on any
+crash and preserve the new dump.
