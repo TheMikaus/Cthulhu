@@ -3681,3 +3681,19 @@ Test Before+A-Z once, then Notifications reload. Verify folder at position 14,
 `3D Altered Beast` at 15, and all following titles in order. Open the folder and
 verify its persisted five-title order after reload. Then test After+Z-A once and
 reload again. Live folder movement/contents are not yet expected before reload.
+
+### 2026-08-12 — RC6 captured After+Z-A correctly placing folder at end
+
+The user reported that the folder moved all the way to the back and reinserted
+the card. The surviving (latest) transaction is unambiguously algorithm 2
+(Z-A), folder placement After, with top-level title `Zelda: Seasons` ending at
+position 201 and folder 0 assigned position 202. Therefore the observed back
+placement is correct for the captured After operation, not evidence that RC6's
+Before formula failed. The prior Before+A-Z transaction was overwritten by the
+later log and cannot be audited from this card insertion.
+
+RC6 remained stable: persistent result zero, two native refresh requests
+acknowledged, and no crash dump. No code or payload change was made. To validate
+the collision fix, perform only Before+A-Z, reload HOME through Notifications,
+and reinsert before performing After; the transaction should show folder new=14
+and first title new=15.
