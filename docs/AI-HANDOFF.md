@@ -3639,3 +3639,45 @@ Repeat A-Z, Z-A, A-Z, then Z-A (four sorts) in one session. This specifically
 crosses RC4's third-sort failure point. Verify live movement/no wrong icons after
 each, then Notifications reload and folder integrity. Stop immediately on any
 crash and preserve the new dump.
+
+### 2026-08-12 — RC5 stable; folder redraw absent; leading-folder collision fixed in RC6
+
+RC5 crossed the prior third-sort crash point and produced no dump. Five native
+refresh requests completed. The final A-Z report had `inline_changed=0` and
+`indirect_changed=0` because the recognized live subsets were already in their
+requested order. The user observed that folder contents did not redraw live and
+one top-level icon remained out of order.
+
+The persistent transaction proves folder contents themselves were sorted
+correctly: Adventure Bar Story, VirtuaNES, Yoshi's New Island, Zero Escape, and
+ZooVetPractice 3D had folder positions 0-4. Their visible order remained stale
+because the live folder model is still not refreshed. This remains a known live
+model limitation, not a persistence error.
+
+The single displaced top-level title exposed an independent placement bug. With
+one folder set to Before Titles, `firstTitlePosition` was 15 and the code assigned
+both the folder and `3D Altered Beast` to position 15. The live map consequently
+contained the folder special record at the boundary and omitted the title record
+from the inline map. RC6 changes leading folder targets from
+`firstTitlePosition + i` to
+`firstTitlePosition - folderCount + i`. For the observed layout the folder now
+uses empty position 14 and the first title remains at 15. Multiple leading
+folders occupy the contiguous slots immediately preceding the first title.
+
+Build/deployment:
+
+- LumaHome commit `77293ca`;
+- visible title `LUMAHOME 0.1 RC6`;
+- active payload `H:\luma\payloads\LumaHome010RC6.firm`;
+- size 345600 bytes;
+- SHA-256
+  `F00CEDD070094D1B57269BB538E5FC0334127C6F74236710AD51AA76789849C0`;
+- RC5 archived as
+  `LumaHome010RC5-STABLE-FOLDER-COLLISION.firm`;
+- protected root firmware unchanged;
+- RC6 pushed to `lumahome/home-menu-framework`.
+
+Test Before+A-Z once, then Notifications reload. Verify folder at position 14,
+`3D Altered Beast` at 15, and all following titles in order. Open the folder and
+verify its persisted five-title order after reload. Then test After+Z-A once and
+reload again. Live folder movement/contents are not yet expected before reload.
