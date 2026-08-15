@@ -3867,3 +3867,13 @@ RC11 is a safe diagnostic iteration, not a speculative folder-model write. It re
 Deployment: visible `0.1.0-rc11`, runtime `1.8.7`; active payload `H:\luma\payloads\LumaHome010RC11.firm`; SHA-256 `37292581CBE6E44080EDFFE4439FB6D5902EEA6F3F70EA80D96ACF64C71A7348`; RC10 archived as `LumaHome010RC10-IDEMPOTENT-NO-FOLDER-MODEL.firm`; root firmware unchanged.
 
 Next test: run Before+A-Z once under RC11 and reinsert. The display may still say partial/stale. Read both probe lines; only implement the live folder permutation if the candidate is a unique non-title, non-folder-member record with consistent identity across maps. Do not ask the user to transcribe it.
+
+## 2026-08-14 — RC11 collision abort and RC12 read-only model enumeration
+
+RC11 failed safely with `ffffff94` (`-108`) before any live scan or write. The resident Launcher claimed folder 0 was at coordinate 181, but Universal-Updater also occupied coordinate 181. This is direct proof that the resident Launcher folder coordinate is stale. The duplicate-coordinate guard prevented corruption; no crash occurred and no RC11 live-map was produced.
+
+RC12 treats only this `-108` collision as a diagnostic continuation. It runs the live model scanner in probe-only mode while HOME remains locked, suppressing both inline and indirect mutations. In addition to the folder-coordinate probes, it logs up to 48 unique non-title record IDs, first indices, and occurrence counts for each map as `non_title_inline` and `non_title_indirect`. This should identify the folder icon record without trusting the colliding Launcher coordinate.
+
+Deployment: visible `0.1.0-rc12`, runtime `1.8.8`; active `H:\luma\payloads\LumaHome010RC12.firm`; SHA-256 `B558B78577378DE9A5792C4DEC4088304BA2B737C6CC9739D3025140EB63D81C`; RC11 archived as `LumaHome010RC11-COLLISION-ABORT.firm`; root firmware unchanged.
+
+Next test: apply Before+A-Z once. An on-screen failure `ffffff94` is expected, but `/3ds/LumaHome/live-map-0.1.0-rc12.txt` must now exist. Reinsert and compare the two folder probes and non-title lists. RC12 should not move any icons or add gaps.
