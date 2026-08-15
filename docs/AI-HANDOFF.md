@@ -3848,3 +3848,22 @@ Deployment:
 - root firmware unchanged.
 
 Next test RC10 Before+A-Z once. It should not add gaps; with current folder old=16 and first title old=17, the folder should remain 16 and the first title 17. The live-model stale warning may remain until the folder icon record is incorporated into the inline/indirect model permutation. After confirming no drift, implement that record move using the same union ordering rather than offset insertion.
+
+## 2026-08-14 — RC10 screenshots and RC11 automatic folder-record probe
+
+The user supplied two 3DS screenshots after RC10. They showed one densely populated page and another page containing only a few icons with many empty coordinates. The folder was not at the requested live position. After inspection, exactly `HNI_0042.JPG` and `HNI_0043.JPG` were deleted from the SD card at the user's request.
+
+RC10 transaction evidence:
+
+- folder 0 resident old position 180, planned Before target 18;
+- first title old 18, planned new 20 because the occupied-slot union preserves existing holes instead of collapsing them;
+- live-map still reported `live_update_partial=1`, four stale folder-member records, inline changed 157 and indirect changed 147;
+- shutdown folder commit again returned `ffffff9f`.
+
+Interpretation: RC10 stopped manufacturing new coordinates, but intentionally preserved gaps already left by earlier iterations. Gap collapse remains a separate optional feature/repair. The folder icon itself is a non-title model record and is not part of the current 173-title permutation.
+
+RC11 is a safe diagnostic iteration, not a speculative folder-model write. It records the inline and indirect record IDs found at the authoritative old folder coordinate, occurrence counts, whether each candidate is a top-level title or folder member, and requested placement. Output is in `/3ds/LumaHome/live-map-0.1.0-rc11.txt` as `folder_probe_inline` and `folder_probe_indirect`. This is intended to determine whether the same unique non-title record represents the folder in both maps before mutating it.
+
+Deployment: visible `0.1.0-rc11`, runtime `1.8.7`; active payload `H:\luma\payloads\LumaHome010RC11.firm`; SHA-256 `37292581CBE6E44080EDFFE4439FB6D5902EEA6F3F70EA80D96ACF64C71A7348`; RC10 archived as `LumaHome010RC10-IDEMPOTENT-NO-FOLDER-MODEL.firm`; root firmware unchanged.
+
+Next test: run Before+A-Z once under RC11 and reinsert. The display may still say partial/stale. Read both probe lines; only implement the live folder permutation if the candidate is a unique non-title, non-folder-member record with consistent identity across maps. Do not ask the user to transcribe it.
