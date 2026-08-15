@@ -3780,3 +3780,12 @@ Test only Before+A-Z. First observe whether folder/title movement occurs live;
 then Notifications reload, verify folder before first title with no extra gaps,
 and reinsert. Inspect `[LIVE_FOLDER_WRITE]`, folder new=14, first title new=15,
 and the post-reload audit before testing After.
+## 2026-08-14 — RC8 card inspection after folder-placement test
+
+- The SD card mounted as `H:` and the active runtime identified itself as LumaHome `0.1.0-rc8` / runtime `1.8.4`.
+- The completed sort transaction was found at the compatibility path `/3ds/Cthulhu/sort-transaction.txt` (not `/3ds/LumaHome/`).
+- The transaction completed successfully (`result=00000000`, journal stage `shutdown-sort-committed`) with no crash.
+- RC8 discovered Launcher at `346bf208` and its new bounded live folder-position write succeeded and read back (`[LIVE_FOLDER_WRITE] writes=1 result=00000000`). This validates the new direct live Launcher write mechanism.
+- The actual completed transaction planned folder 0 at position 204 (`old=-1 new=204`). That is the **After titles** target, not the Before target. The title range in that transaction began at 16 and ended at 203.
+- After reboot, `/3ds/LumaHome/runtime.txt` reports the overlay defaults (`direction=A-Z`, `folder_placement=before`, idle). These are freshly initialized per HOME Menu process and do not prove which option was active when the prior transaction ran.
+- No firmware/code change was made during this inspection. Next test must explicitly apply one sort while the panel visibly reads `BEFORE TITLES`, then return the card without performing a second sort. Expected transaction target is the first usable coordinate (approximately 15), not 204. If it still records 204, instrument the apply-time boolean directly in the transaction and command channel before changing placement logic.
