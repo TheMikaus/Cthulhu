@@ -3910,3 +3910,13 @@ RC14 adds a narrowly guarded recovery for this already-proven split state. If La
 Deployment: visible `0.1.0-rc14`, runtime `1.9.0`; active `H:\luma\payloads\LumaHome010RC14.firm`; SHA-256 `125A5C9DADEEE5E2378868730B1D89C0884A90524500414ABF34B0449921C585`; RC13 archived as `LumaHome010RC13-INDIRECT-MOVED-INLINE-STALE.firm`; root firmware unchanged.
 
 Next test: Before+A-Z once. Expected RC14 log is inline old=13, source=181, new=13, record=190, recovery_hint=1, moved=1; indirect should remain record360 at13, moved=0. Visually the folder should move live to the leading slot. Existing empty slots are not collapsed by this test.
+
+## 2026-08-15 — RC14 live Before folder placement visually confirmed
+
+The user confirmed the folder moved live to the front under RC14. After was not tested because the device was charging.
+
+The successful run occurred after a HOME process/model rebuild (pid 40, raw `346f9d20`, processed `346fcad0`, Launcher `346ded88`). In this model state Launcher reported folder old=18/new=14. The inline coordinate probe at 18 found a title, so no inline folder move was attempted. The indirect layer positively identified unique non-title folder record 360 at 18 and moved it to 14, preserving displaced title record 15. The user-visible folder movement therefore validates the indirect-layer guarded swap as the operative live placement mechanism. No crash dump was present.
+
+Caveat: the shutdown folder persistence stage returned `ffffff9f`. The subsequent persistence audit reported 172 title-position mismatches between current extdata and the expected snapshot, although the resident raw/processed live buffers matched. Treat live Before placement as proven, but do not yet claim reboot persistence for this run.
+
+No firmware change was made after this result. RC14 remains the active baseline. Next tests, after charging: (1) verify current folder position after reboot/normal HOME load; (2) test After+A-Z live once; (3) reinsert and inspect both model-move and shutdown persistence logs. Existing gaps remain a separate optional collapse/repair feature.
