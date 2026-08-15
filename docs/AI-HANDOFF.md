@@ -3789,3 +3789,28 @@ and the post-reload audit before testing After.
 - The actual completed transaction planned folder 0 at position 204 (`old=-1 new=204`). That is the **After titles** target, not the Before target. The title range in that transaction began at 16 and ended at 203.
 - After reboot, `/3ds/LumaHome/runtime.txt` reports the overlay defaults (`direction=A-Z`, `folder_placement=before`, idle). These are freshly initialized per HOME Menu process and do not prove which option was active when the prior transaction ran.
 - No firmware/code change was made during this inspection. Next test must explicitly apply one sort while the panel visibly reads `BEFORE TITLES`, then return the card without performing a second sort. Expected transaction target is the first usable coordinate (approximately 15), not 204. If it still records 204, instrument the apply-time boolean directly in the transaction and command channel before changing placement logic.
+
+## 2026-08-14 — RC8 Before test diagnosis and RC9 authoritative Launcher source
+
+RC8 Before+A-Z reached the sorter correctly (`folder_placement=before`, result 0, 173 mutations). It planned folder 0 at position 16 and shifted all top-level titles forward by one. The user observed the resulting title gaps and no live folder movement.
+
+The logs isolate the cause: before planning, the resident Launcher object reported the existing folder position as `-1`, while the file-backed Launcher snapshot reports the same folder number 1 at position 204. RC8 successfully wrote 16 into the resident field and read it back, but HOME's live icon-grid record was not moved. Thus the title shift was real while the folder icon remained elsewhere.
+
+RC9 changes:
+
+- visible release `0.1.0-rc9`, runtime `1.8.5` / `active-home-controller-v185`;
+- attempts a read-only authoritative `Launcher.dat` snapshot while HOME is locked, validates it, and uses it for folder planning when available;
+- logs `[LAUNCHER_SOURCE]` with file result, validity, chosen source, and folder count;
+- records the real old folder coordinate instead of forcing `old=-1`;
+- refuses a Before insertion with result `-107` if a source folder coordinate cannot be validated, preventing another false-success title shift that creates gaps;
+- live-map report bumped to scan 2.0.3 at `/3ds/LumaHome/live-map-0.1.0-rc9.txt`.
+
+Build/deployment:
+
+- active payload: `H:\luma\payloads\LumaHome010RC9.firm`;
+- size: 346112 bytes;
+- SHA-256: `29A965F340ACCB4D257EB9E3E545DA33F1FF5CE4E67C41F4EF76CBABE2FB8BB0`;
+- RC8 archived as `LumaHome010RC8-LIVE-FOLDER-NO-GRID.firm`;
+- protected root `H:\boot.firm` unchanged at SHA-256 `10A8356230FF4C3E7D72FCFBC2F7E47CC12717DE2B6AF5122E081B51E023CC2A`.
+
+Next test: boot RC9, confirm the visible RC9 label, select Before+A-Z, apply once, observe whether it succeeds or explicitly fails, then reinsert. Inspect `[LAUNCHER_SOURCE]`, folder old/new coordinates, and RC9 live-map. The next live-grid step is to identify/move the folder icon record using the authoritative old coordinate; do not reintroduce blind title insertion.
