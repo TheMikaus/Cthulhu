@@ -3892,3 +3892,21 @@ The differing record IDs are expected because inline and indirect maps use separ
 Deployment: visible `0.1.0-rc13`, runtime `1.8.9`; active `H:\luma\payloads\LumaHome010RC13.firm`; SHA-256 `E68003F433B05FEF491512BC9C82912165D8572BFCE9E9A09508A8CF47F2BEEC`; RC12 archived as `LumaHome010RC12-FOLDER-RECORD-PROBE.firm`; root firmware unchanged.
 
 Next test: Before+A-Z once. Observe whether the folder moves live to the leading slot and whether HOME remains responsive. Existing gaps are not expected to collapse in this iteration. Reinsert for the two move logs and crash check.
+
+## 2026-08-15 — RC13 screenshot/result and RC14 stale-inline recovery
+
+The user supplied `HNI_0044.JPG`; it showed the folder still at its old on-screen location while the first visible user slot contained the warning icon. The screenshot was inspected and then deleted from the SD card as requested.
+
+RC13 evidence:
+
+- sort and shutdown persistence succeeded with no crash;
+- Launcher now reports folder old=13/new=13;
+- indirect map already contains the validated folder record 360 at index 13, so no indirect move was needed;
+- inline map at index 13 contains title record 15, while the previously validated unique inline folder record 190 remains at index 181;
+- because Launcher said old==new, RC13 skipped the inline move even though the inline representation was still stale.
+
+RC14 adds a narrowly guarded recovery for this already-proven split state. If Launcher says old==new but the inline target is a title, it searches for the RC12-validated inline folder record 190. Recovery proceeds only if record 190 occurs exactly once. Its actual source index is used for the membership-preserving swap, the displaced target record is retained at the old source, and the normal title permutation then reorders that displaced title. The report now includes source index and `recovery_hint=1`.
+
+Deployment: visible `0.1.0-rc14`, runtime `1.9.0`; active `H:\luma\payloads\LumaHome010RC14.firm`; SHA-256 `125A5C9DADEEE5E2378868730B1D89C0884A90524500414ABF34B0449921C585`; RC13 archived as `LumaHome010RC13-INDIRECT-MOVED-INLINE-STALE.firm`; root firmware unchanged.
+
+Next test: Before+A-Z once. Expected RC14 log is inline old=13, source=181, new=13, record=190, recovery_hint=1, moved=1; indirect should remain record360 at13, moved=0. Visually the folder should move live to the leading slot. Existing empty slots are not collapsed by this test.
