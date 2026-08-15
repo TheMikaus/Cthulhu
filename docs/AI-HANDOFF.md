@@ -3877,3 +3877,18 @@ RC12 treats only this `-108` collision as a diagnostic continuation. It runs the
 Deployment: visible `0.1.0-rc12`, runtime `1.8.8`; active `H:\luma\payloads\LumaHome010RC12.firm`; SHA-256 `B558B78577378DE9A5792C4DEC4088304BA2B737C6CC9739D3025140EB63D81C`; RC11 archived as `LumaHome010RC11-COLLISION-ABORT.firm`; root firmware unchanged.
 
 Next test: apply Before+A-Z once. An on-screen failure `ffffff94` is expected, but `/3ds/LumaHome/live-map-0.1.0-rc12.txt` must now exist. Reinsert and compare the two folder probes and non-title lists. RC12 should not move any icons or add gaps.
+
+## 2026-08-14 — RC12 identifies live folder records; RC13 guarded move
+
+RC12 completed successfully on the next layout state. It identified the folder representation at old model index 181 and requested Before target 13:
+
+- inline map: record 190, exactly one occurrence, neither title nor folder-member record;
+- indirect map: record 360, exactly one occurrence, neither title nor folder-member record;
+- index 13 was empty in both relevant maps;
+- no crash; persistent sort committed.
+
+The differing record IDs are expected because inline and indirect maps use separate representations. RC13 performs an independently validated swap in each map: old/new indices must be in range, old and new must differ, the source record must be nonnegative, unique, and absent from all title/folder-member record sets. The target entry is moved back to the old index rather than discarded, preserving map membership. Both swaps and displaced IDs are logged as `folder_move_inline` and `folder_move_indirect`; cache flushes cover folder-only changes.
+
+Deployment: visible `0.1.0-rc13`, runtime `1.8.9`; active `H:\luma\payloads\LumaHome010RC13.firm`; SHA-256 `E68003F433B05FEF491512BC9C82912165D8572BFCE9E9A09508A8CF47F2BEEC`; RC12 archived as `LumaHome010RC12-FOLDER-RECORD-PROBE.firm`; root firmware unchanged.
+
+Next test: Before+A-Z once. Observe whether the folder moves live to the leading slot and whether HOME remains responsive. Existing gaps are not expected to collapse in this iteration. Reinsert for the two move logs and crash check.
