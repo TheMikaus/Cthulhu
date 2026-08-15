@@ -3814,3 +3814,37 @@ Build/deployment:
 - protected root `H:\boot.firm` unchanged at SHA-256 `10A8356230FF4C3E7D72FCFBC2F7E47CC12717DE2B6AF5122E081B51E023CC2A`.
 
 Next test: boot RC9, confirm the visible RC9 label, select Before+A-Z, apply once, observe whether it succeeds or explicitly fails, then reinsert. Inspect `[LAUNCHER_SOURCE]`, folder old/new coordinates, and RC9 live-map. The next live-grid step is to identify/move the folder icon record using the authoritative old coordinate; do not reintroduce blind title insertion.
+
+## 2026-08-14 — RC9 partial-live result and RC10 no-gap/idempotent planner
+
+User-visible RC9 result: `Live sort partial, folder model stale, reopen HOME`; folder did not move live and gaps remained.
+
+RC9 evidence:
+
+- apply succeeded with Before+A-Z and 173 title mutations;
+- authoritative file read was locked (`file_result=c92044e7`), so validated resident Launcher was used;
+- resident folder 0 was now valid at old position 16 and RC9 targeted new position 17;
+- the first title was old 17/new 18 and every later top-level title was likewise shifted one position;
+- live-map found all 173 title records but explicitly reported five stale folder-member records, `live_update_partial=1`; inline changed 19 and indirect changed 148;
+- shutdown folder commit failed with `ffffff9f`, while SD title persistence itself audited exact (`position_mismatches=0`).
+
+This revealed that the RC7-RC9 insertion algorithm was not idempotent. Even when a folder was already before the first title, every Before application added another offset and manufactured another gap.
+
+RC10 replaces offset insertion with an occupied-slot union/repartition:
+
+- gather the existing coordinates of every top-level title and folder;
+- sort that combined coordinate set without creating or deleting positions;
+- Before assigns sorted folders to the earliest occupied coordinates and sorted titles to the remainder;
+- After assigns titles to the earliest coordinates and folders to the latest;
+- duplicate/invalid occupied coordinates abort with explicit `-108`/`-109` instead of writing;
+- repeated Before or After application is idempotent and cannot walk the layout forward;
+- visible release `0.1.0-rc10`, runtime `1.8.6`, scan `2.0.4`.
+
+Deployment:
+
+- active `H:\luma\payloads\LumaHome010RC10.firm`, 346112 bytes;
+- SHA-256 `F59C3C3DD37C2EC2165F6E7670347F1485DB8C150B86841A8E92FBB0B0E4AEEC`;
+- RC9 archived as `LumaHome010RC9-STALE-FOLDER-MODEL.firm`;
+- root firmware unchanged.
+
+Next test RC10 Before+A-Z once. It should not add gaps; with current folder old=16 and first title old=17, the folder should remain 16 and the first title 17. The live-model stale warning may remain until the folder icon record is incorporated into the inline/indirect model permutation. After confirming no drift, implement that record move using the same union ordering rather than offset insertion.
