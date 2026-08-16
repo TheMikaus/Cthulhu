@@ -3938,3 +3938,13 @@ RC15 changes:
 Deployment: visible `0.1.0-rc15`, runtime `1.9.1`; active `H:\luma\payloads\LumaHome010RC15.firm`; SHA-256 `C577BDD994F9951ECC81D6DAA46CE8B85249E8BBC6B8EC400849AF73DF59562B`; RC14 archived as `LumaHome010RC14-LIVE-FOLDER-PERSIST-FAILED.firm`; root firmware unchanged.
 
 Recovery test: boot RC15, apply Before+A-Z once. If the folder is currently absent, live display may still require HOME reopen/reboot because no folder model record may exist to move. Power off normally so the shutdown handler can write and verify the two-byte position, then reboot and confirm the folder reappears before testing After.
+
+## 2026-08-15 — RC15 persistence recovery confirmed; label display remains
+
+User result: the folder appeared on initial RC15 boot, survived sort → normal power-off → power-on, and did not vanish. The user was unsure of exact placement and reported the displayed folder name missing.
+
+Logs confirm the persistence repair succeeded completely: folder 0 number 1 remained at old=15/new=15; targeted Launcher commit opened archive/file, wrote once, verified once, committed, and returned 0; shutdown journal stage is `shutdown-sort-committed`; no crash exists. First top-level title position is 18, so folder position 15 is correctly before all titles.
+
+The pre-sort Launcher snapshot contains folder 0 name bytes `67 00 65 00 73 00 73 00 ...`, UTF-16LE `gess`, at documented offset `0x1560`. Number is 1 and position is 15. RC15 changed only the two-byte position and did not erase the name. Therefore the missing visible label is a HOME live/model label refresh issue, not persistent name loss.
+
+RC15 remains unchanged as the proven reboot-persistent Before baseline. Next work: test After separately, then diagnose/rebuild the live folder label representation. Do not restore Launcher.dat or rewrite name bytes because the authoritative name is intact. Existing gaps remain separate.
