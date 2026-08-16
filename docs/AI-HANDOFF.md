@@ -3948,3 +3948,13 @@ Logs confirm the persistence repair succeeded completely: folder 0 number 1 rema
 The pre-sort Launcher snapshot contains folder 0 name bytes `67 00 65 00 73 00 73 00 ...`, UTF-16LE `gess`, at documented offset `0x1560`. Number is 1 and position is 15. RC15 changed only the two-byte position and did not erase the name. Therefore the missing visible label is a HOME live/model label refresh issue, not persistent name loss.
 
 RC15 remains unchanged as the proven reboot-persistent Before baseline. Next work: test After separately, then diagnose/rebuild the live folder label representation. Do not restore Launcher.dat or rewrite name bytes because the authoritative name is intact. Existing gaps remain separate.
+
+## 2026-08-15 — RC15 After placement and name preservation fully confirmed
+
+The user clarified that the full After test succeeded: the folder appeared after the individual titles, survived reboot, and retained its name. Card logs corroborate the visual result.
+
+RC15 After+A-Z transaction: result 0; folder 0 number 1 moved old=15 to new=205; first title moved into position 15 and the remaining titles reused the existing combined occupied coordinates. The indirect live model uniquely identified folder record 360 at index 15 and moved it to 205 while preserving displaced record 182. The inline map did not perform a speculative move because its old coordinate contained a title. The visible result was nevertheless correct.
+
+Targeted Launcher shutdown persistence opened successfully, wrote one two-byte position, verified one write, committed the archive, and returned 0. Journal stage is `shutdown-sort-committed`. Folder name remained intact, so no label repair is presently required.
+
+RC15 is now the proven stable baseline for both Before and After folder placement, live display, normal power-off/reboot persistence, contained-title preservation, and folder-name preservation. Remaining planned feature work begins with optional gap collapse, followed by row/column traversal choices, top/bottom folder rows, special A-Z folder organization, and eventually live search/filtering.
