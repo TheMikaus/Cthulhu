@@ -3995,3 +3995,22 @@ RC16 remains installed. Collapse OFF remains the RC15-compatible behavior; Colla
 The user clarified that the icons which did not move were games still displayed as gift-wrapped packages, and then unwrapped them. This confirms they were temporary HOME presentation/package records rather than ordinary cataloged title-position records. RC16 correctly did not mutate those unknown non-title model records.
 
 Do not add special wrapped-package sorting based on the current non-title IDs: the state is temporary, record identity is not proven stable, and the packages become normal sortable titles after unwrapping. Next test should rerun RC16 Before+A-Z with Collapse Gaps ON now that all packages are unwrapped. Expected result: the newly normal titles join the catalog and compacted range; compare request/title count and verify live/reboot placement. If gaps remain after that, log only the specific missing ordinary records.
+
+## 2026-08-15 — RC17 selectable row/column traversal
+
+The user asked to proceed to the next version after unwrapping the remaining gift packages. RC17 implements the next planned feature: traversal order is now independent of alphabetic direction, folder placement, and gap collapse.
+
+The overlay has a fourth `TRAVERSAL` field:
+
+- `COLUMN: DOWN/RIGHT` is the default and preserves RC16's existing linear-coordinate behavior;
+- `ROW: RIGHT/DOWN` sorts visually left-to-right across a row before proceeding down.
+
+The implementation follows 3dbrew's Launcher.dat description: offset `0xB51` stores HOME's row count minus one, positions are linear, and horizontal columns are derived by dividing by the number of rows. RC17 reads and validates the active HOME row count (1–6) instead of assuming a grid height. Each folder uses its own validated row count from `0x1434 + folderId`. Invalid row metadata aborts before commit with `-113` (HOME) or `-114` (folder).
+
+With Collapse Gaps OFF, RC17 orders the already-occupied coordinates by the selected visual traversal, preserving the exact coordinate set and holes. With Collapse Gaps ON, it generates a compact coordinate rectangle in the selected traversal. Folder Before/After continues to determine which sorted group receives the leading or trailing ranks, and folder contents use the same selected traversal as top-level titles. Column mode deliberately takes the pre-RC17 code path.
+
+Logging now records `traversal=row-major/column-major` in `/3ds/LumaHome/runtime.txt` and a `[TRAVERSAL]` section with the decoded HOME row count in the transaction details. Visible release is `0.1.0-rc17`, runtime `1.9.3`, live scan `2.1.1`.
+
+Build succeeded with the existing `cthulhu-luma-toolchain:1` Docker image. Deployment: active `H:\luma\payloads\LumaHome010RC17.firm`; SHA-256 `0C13716D4FDFA5F2CEBDF0D4BA22A296BA9DE6CFB3EC06F20A0DFA8FB77AB751`; RC16 archived as `LumaHome010RC16-COLLAPSE-GAPS.firm`; root `H:\boot.firm` remains unchanged with SHA-256 `10A8356230FF4C3E7D72FCFBC2F7E47CC12717DE2B6AF5122E081B51E023CC2A`.
+
+Focused RC17 test: boot the RC17 payload and confirm the panel title. Set A-Z, Before, Collapse Gaps ON, and `ROW: RIGHT/DOWN`; apply once. Verify names advance alphabetically left-to-right on the first visual row and then continue on the next row, the folder remains before titles, folder contents use the same traversal, and HOME remains responsive. Then normal power-off/reboot and verify persistence. Reinsert the card after this one transaction so the row counts, desired positions, live-map coverage, and shutdown commit can be audited before trying column mode or Z-A.
