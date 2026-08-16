@@ -4046,3 +4046,13 @@ RC19 also writes `/3ds/LumaHome/last-sort-options.txt` immediately before callin
 Visible release `0.1.0-rc19`, runtime `1.9.5`, live scan `2.1.3`. Build succeeded. Deployment: `H:\luma\payloads\LumaHome010RC19.firm`; SHA-256 `1B18159F6EF4076E343BF79F7590E41EFB2E2C8756C1D287AB63E8D4FCA63A98`. RC18 archived as `LumaHome010RC18-ABSOLUTE-ROW-GRID.firm`; root boot firmware unchanged.
 
 Next test: boot RC19, set A-Z + Before + Collapse ON + Row Right/Down, close the panel, reopen it and confirm all four choices remain. Apply once. Reopen again or restart HOME and confirm the values still remain. Then inspect whether the distant TM++ icon compacts and whether mGBA wraps; reinsert the card so `settings.bin`, `last-sort-options.txt`, live-map, and persistence logs can be compared.
+
+## 2026-08-15 — RC20 remembers only the last applied choices
+
+The user clarified the persistence semantics: after reboot, the selected values must be the values used by the last Apply, not merely the last values edited in the panel.
+
+RC20 removes settings writes from left/right field changes. Edits remain active in the current attached runtime, including closing and reopening the overlay in the same HOME process, but they do not replace the saved defaults. Pressing A writes and flushes all four selected choices immediately before the sort attempt and writes the matching durable `last-sort-options.txt`. A later HOME restart or full reboot loads that applied combination from `settings.bin`. This also means changing a field and rebooting without pressing A restores the preceding applied combination.
+
+Visible release `0.1.0-rc20`, runtime `1.9.6`, live scan `2.1.4`. Build succeeded. The SD card was not mounted at installation time (H: absent), so the compiled firmware is currently only at `runtime/.build/Luma3DS/boot.firm`; RC20 still needs to be copied to the SD payload directory. Do not claim it is installed until its destination hash is verified.
+
+Next test after installation: apply a recognizable combination such as Z-A + After + Collapse ON + Row. Change one field without applying, then reboot. The overlay should restore exactly the applied combination, not the later unapplied edit. After that, return to A-Z + Before + Collapse ON + Row and apply for the pending compact-layout/mGBA test.
