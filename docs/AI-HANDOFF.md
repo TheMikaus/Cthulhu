@@ -3920,3 +3920,21 @@ The successful run occurred after a HOME process/model rebuild (pid 40, raw `346
 Caveat: the shutdown folder persistence stage returned `ffffff9f`. The subsequent persistence audit reported 172 title-position mismatches between current extdata and the expected snapshot, although the resident raw/processed live buffers matched. Treat live Before placement as proven, but do not yet claim reboot persistence for this run.
 
 No firmware change was made after this result. RC14 remains the active baseline. Next tests, after charging: (1) verify current folder position after reboot/normal HOME load; (2) test After+A-Z live once; (3) reinsert and inspect both model-move and shutdown persistence logs. Existing gaps remain a separate optional collapse/repair feature.
+
+## 2026-08-15 — Folder disappeared after reboot; RC15 targeted persistence repair
+
+The user reported that the folder disappeared after reboot. Current SD title extdata remains internally exact (`position_mismatches=0`), including the five titles assigned to folder 0, so folder contents were not deleted. The missing UI folder is a Launcher position failure.
+
+RC14's targeted shutdown writer failed with `ffffff9f` (`-97`). Its identity guard required both folder number and the old position to match. HOME can update/invalidate that position before Rosalina handles the shutdown notification, making the old-position comparison inherently racy. The live folder move succeeded, but the two-byte persistent Launcher position did not commit.
+
+RC15 changes:
+
+- targeted Launcher writes identify a folder by its stable folder number only; they no longer reject a valid folder because its current position differs from the earlier live position;
+- a nonzero folder number with an invalid position is treated as an unplaced/recoverable folder rather than error `-44`;
+- missing-folder Before repair uses only the free slot immediately preceding the first title; After uses only free space immediately following the last title;
+- repair does not shift or rewrite title coordinates and aborts with `-110`/`-111` if no safe free target exists;
+- only the two-byte folder position is written at shutdown, with existing number verification and readback.
+
+Deployment: visible `0.1.0-rc15`, runtime `1.9.1`; active `H:\luma\payloads\LumaHome010RC15.firm`; SHA-256 `C577BDD994F9951ECC81D6DAA46CE8B85249E8BBC6B8EC400849AF73DF59562B`; RC14 archived as `LumaHome010RC14-LIVE-FOLDER-PERSIST-FAILED.firm`; root firmware unchanged.
+
+Recovery test: boot RC15, apply Before+A-Z once. If the folder is currently absent, live display may still require HOME reopen/reboot because no folder model record may exist to move. Power off normally so the shutdown handler can write and verify the two-byte position, then reboot and confirm the folder reappears before testing After.
