@@ -4060,3 +4060,9 @@ Next test after installation: apply a recognizable combination such as Z-A + Aft
 ## 2026-08-15 — RC20 installed after SD remount
 
 The card remounted as H:. RC20 was copied to `H:\luma\payloads\LumaHome010RC20.firm` and verified SHA-256 `EA2952D30F41ADD0F90F61B407A6E13CB8FA54594D96ED4C8EC1403711385D67` (349,696 bytes). RC19 was preserved as `LumaHome010RC19-REMEMBER-EDITED.firm`. Root `H:\boot.firm` remains unchanged with SHA-256 `10A8356230FF4C3E7D72FCFBC2F7E47CC12717DE2B6AF5122E081B51E023CC2A`.
+
+## 2026-08-16 — First post-install boot was still RC19
+
+After the user remounted the card, inspection showed `runtime.txt` release `0.1.0-rc19`, runtime `1.9.5`; no RC20 live-map or applied-options file exists. Therefore RC20 was present but was not selected in the chainloader, and its semantics remain untested.
+
+The existing 12-byte `settings.bin` is valid RC19 data with flags `0x000e`: A-Z, Before, Collapse ON, Row. It was last written at 22:40:34 by RC19's edit-time persistence and cannot serve as proof of RC20's Apply-only behavior. RC19's persistence audit is exact (0 byte and position mismatches). Next action is simply to chainload `LumaHome010RC20.firm`, confirm the visible RC20 title, then conduct the applied-versus-unapplied reboot test documented above.
