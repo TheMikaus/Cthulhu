@@ -4056,3 +4056,7 @@ RC20 removes settings writes from left/right field changes. Edits remain active 
 Visible release `0.1.0-rc20`, runtime `1.9.6`, live scan `2.1.4`. Build succeeded. The SD card was not mounted at installation time (H: absent), so the compiled firmware is currently only at `runtime/.build/Luma3DS/boot.firm`; RC20 still needs to be copied to the SD payload directory. Do not claim it is installed until its destination hash is verified.
 
 Next test after installation: apply a recognizable combination such as Z-A + After + Collapse ON + Row. Change one field without applying, then reboot. The overlay should restore exactly the applied combination, not the later unapplied edit. After that, return to A-Z + Before + Collapse ON + Row and apply for the pending compact-layout/mGBA test.
+
+## 2026-08-15 — RC20 installed after SD remount
+
+The card remounted as H:. RC20 was copied to `H:\luma\payloads\LumaHome010RC20.firm` and verified SHA-256 `EA2952D30F41ADD0F90F61B407A6E13CB8FA54594D96ED4C8EC1403711385D67` (349,696 bytes). RC19 was preserved as `LumaHome010RC19-REMEMBER-EDITED.firm`. Root `H:\boot.firm` remains unchanged with SHA-256 `10A8356230FF4C3E7D72FCFBC2F7E47CC12717DE2B6AF5122E081B51E023CC2A`.
