@@ -3958,3 +3958,22 @@ RC15 After+A-Z transaction: result 0; folder 0 number 1 moved old=15 to new=205;
 Targeted Launcher shutdown persistence opened successfully, wrote one two-byte position, verified one write, committed the archive, and returned 0. Journal stage is `shutdown-sort-committed`. Folder name remained intact, so no label repair is presently required.
 
 RC15 is now the proven stable baseline for both Before and After folder placement, live display, normal power-off/reboot persistence, contained-title preservation, and folder-name preservation. Remaining planned feature work begins with optional gap collapse, followed by row/column traversal choices, top/bottom folder rows, special A-Z folder organization, and eventually live search/filtering.
+
+## 2026-08-15 — RC16 optional Collapse Gaps implementation
+
+RC16 adds a third overlay field, `COLLAPSE GAPS`, default OFF. Direction and folder placement remain independent. Navigation now cycles through Direction, Folder Placement, and Collapse Gaps; left/right toggles the selected value.
+
+When OFF, RC15's proven occupied-coordinate behavior is retained. When ON:
+
+- top-level titles and folders are assigned a contiguous range beginning at HOME's first user coordinate 13;
+- Before assigns sorted folders first, then sorted titles;
+- After assigns sorted titles first, then sorted folders;
+- each folder's contained titles is compacted independently from position 0;
+- capacity overflow aborts with `-112` rather than writing;
+- no folder name, number, membership, title ID, or unrelated Launcher field is changed.
+
+The collapse choice is passed explicitly into the background sorter and recorded in `runtime.txt` as `collapse_gaps=on/off`. Visible release `0.1.0-rc16`, runtime `1.9.2`, live scan `2.1.0`.
+
+Deployment: active `H:\luma\payloads\LumaHome010RC16.firm`; SHA-256 `273AD099649E5B2CC514A834536289F75205F2C474666E754DA901AD5543549F`; RC15 preserved as `LumaHome010RC15-STABLE-BIDIRECTIONAL.firm`; root firmware unchanged.
+
+Test order: boot and confirm RC16; set Before+A-Z and Collapse Gaps ON; apply once; verify folder is first, all top-level gaps are removed, folder contents are A-Z with no gaps, and HOME remains responsive; power off normally, reboot, verify persistence, then reinsert. Do not test After until this first compacting transaction is audited.
