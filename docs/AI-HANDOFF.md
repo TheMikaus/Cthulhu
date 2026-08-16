@@ -4066,3 +4066,13 @@ The card remounted as H:. RC20 was copied to `H:\luma\payloads\LumaHome010RC20.f
 After the user remounted the card, inspection showed `runtime.txt` release `0.1.0-rc19`, runtime `1.9.5`; no RC20 live-map or applied-options file exists. Therefore RC20 was present but was not selected in the chainloader, and its semantics remain untested.
 
 The existing 12-byte `settings.bin` is valid RC19 data with flags `0x000e`: A-Z, Before, Collapse ON, Row. It was last written at 22:40:34 by RC19's edit-time persistence and cannot serve as proof of RC20's Apply-only behavior. RC19's persistence audit is exact (0 byte and position mismatches). Next action is simply to chainload `LumaHome010RC20.firm`, confirm the visible RC20 title, then conduct the applied-versus-unapplied reboot test documented above.
+
+## 2026-08-16 — RC20 exposes excluded TWiLight/special-icon boundary
+
+The user booted RC20 and applied Z-A + After + Collapse ON + Column. `last-sort-options.txt` and `runtime.txt` agree exactly, proving the applied settings persistence/logging works. The sorter returned 0 with 173 mutations. Screenshot `HNI_0050.JPG` showed TWiLight Menu++ isolated and the folder visually not after every application.
+
+The transaction planned 168 top-level SD titles at positions 13–180 and folder 0 at 181. Both live layers found all desired records (`desired_missing=0`), changed all 168 top-level entries, moved the folder 15→181, and reported no partial/deferred update. Thus folder placement is exactly after the current sortable SD set, not after every visible HOME icon.
+
+TWiLight Menu++ is not present in the 332-entry AM-generated sort request (no `000480...` entry was returned), while the live maps retain a unique non-title model record 205 at coordinate/index 14. This excluded HOME/DSi-style icon is the common cause: it is not compacted or alphabetically ranked, and its presence makes the otherwise-correct folder boundary look wrong. mGBA is separately confirmed as ordinary SD title `00040000001A1E00`, slot 8, and was sorted old22→new113 in this Z-A transaction.
+
+Do not adjust folder rank or compact arithmetic to hide this. Next work is to identify record 205 safely and add supported DSiWare/special HOME application discovery to the combined top-level planner. First instrumentation should dump all words/identity fields for every unmatched live model record (especially 205), correlate them with current Launcher entries and visible coordinate, and retain the full result automatically. Only after stable title identity is proven should it enter persistent Launcher mutation and alphabetical naming. This also makes Before/After mean relative to all supported applications rather than SD-only titles.
