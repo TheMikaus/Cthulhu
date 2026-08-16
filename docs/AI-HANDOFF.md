@@ -4120,3 +4120,26 @@ Folder plan format is version 3 and carries up to 16 targeted Launcher-title mut
 Visible release `0.1.0-rc23`, runtime `1.9.9`, scan `2.3.0`. Build succeeded. Deployment: `H:\luma\payloads\LumaHome010RC23.firm`; SHA-256 `41BC7E7F90B314B4EBC4C0170534722DC8073489AF745C29F31B211B7F1DE04E`. RC22 archived as `LumaHome010RC22-SAFE-SHUTDOWN-MERGE.firm`; root firmware unchanged.
 
 Focused RC23 test: boot and confirm RC23. Use A-Z + Before + Collapse ON + Column and Apply once. Verify TWiLight Menu++ and the second DSi icon move live into the T section, the existing folder remains before every supported application, no icon wraps, and HOME remains responsive. Normal power-off/reboot; verify both DSi positions, folder membership, folder name, and icon presentation persist; then reinsert. If Apply fails or display is partial, stop and collect the result without attempting a second direction.
+
+## 2026-08-16 — RC23 persisted DSi positions but blank names sorted last; RC24 alias fix
+
+User result: immediately after Apply, icons did not fully compact (`HNI_0052.JPG`); after reboot they compacted, but TWiLight remained at the end/wrong location (`HNI_0053.JPG`). Both screenshots and sidecars were inspected and removed.
+
+Facts from logs: RC23 applied A-Z + Before + Collapse ON + Column. Targeted Launcher commit verified one folder plus two DSi position writes. The transaction included DSi slots 12/13 but logged both names empty and assigned them positions 181/182. The full live model found 169 top-level records with no desired identity missing, but the inline map changed only 168 and reported `live_update_partial=1`; the indirect map changed 174. Thus persistent compaction worked after reboot, while complete live compaction remains blocked by the coordinate-14 gift/proxy representation.
+
+The DSi naming bug was an implementation error: RC23 aliases were added only when an ID was absent from the request. The request already contained both DSi IDs as unnamed entries, so aliases were not applied and the comparator correctly placed unknown names last. RC24 now fills an alias whenever the matching existing entry is unnamed, as well as appending it when absent. Expected aliases: `TWiLight Menu++` and `TWiLight Menu++ Game Booter`.
+
+Current assumptions, explicitly tracked:
+
+1. Launcher title ID is stable identity for DSi persistence. Strongly supported by unique slots, live model IDs, and verified targeted readback.
+2. `0004800453524C41` is the visible TWiLight/SRLoader icon and `0004800023232323` is its game-booter companion. Supported by DSi class/product history and observed last-page icons, but banner extraction is still needed to eliminate alias inference.
+3. Position 13 is the first user-movable coordinate and 0–12 are fixed system entries. Repeated layout evidence supports this.
+4. Launcher linear coordinates are column-major with the active row count. Supported by five-row screenshots and corrected RC18 behavior.
+5. Record 205 is a gift/package presentation proxy occupying coordinate 14, not a sortable application identity. Supported by blank ID, `w14=1`, and title-dependent wrapping at that coordinate; exact backing flag is not yet known.
+6. The inline map drives immediate visible layout, while the serialized raw/processed model plus Launcher drives reconstruction after reboot. Strongly supported by partial-live/full-reboot results.
+7. A safe live collapse cannot simply overwrite record 205; its ownership/association must be understood or cleared through HOME's native package-state path. This is a safety assumption, not yet proven.
+8. When manual folder membership changes after Apply, preserving HOME's whole current SD layout is safer than replaying planned positions. RC22 test and shutdown merge log prove this behavior preserves user changes.
+
+Visible release `0.1.0-rc24`, runtime `1.10.0`, scan `2.3.1`. Deployment: `H:\luma\payloads\LumaHome010RC24.firm`; SHA-256 `D2E45DAAF272DA9991B515A6F48748826907A13FEAD3FA8B8F3DB9664A64ED9C`. RC23 archived as `LumaHome010RC23-DSI-BLANK-ALIASES.firm`; root firmware unchanged.
+
+Next focused test: boot RC24, Apply A-Z + Before + Collapse ON + Column once, and check only whether TWiLight appears in the T section after reboot. Live gaps may remain and are not the target of RC24. Reinsert afterward; transaction lines for both DSi IDs must show nonempty names and T-range target positions before banner extraction/live-proxy work continues.
