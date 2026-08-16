@@ -3989,3 +3989,9 @@ The live model explains the partial visual update: all 173 desired title records
 Any icons still unmoved after reboot are outside the 173 ordinary serialized title records whose positions audit exact. They may be HOME's wrapped/present or another special icon state; do not blindly treat the remaining non-title records as titles. Next diagnostic should log the six top-level records missing from inline plus the remaining special model records and correlate them with a screenshot/precise wrapped-vs-unwrapped description before mutating them.
 
 RC16 remains installed. Collapse OFF remains the RC15-compatible behavior; Collapse ON is proven persistent for ordinary titles and folder contents, but live redraw and special-icon coverage are partial.
+
+## 2026-08-15 — Remaining icons identified as gift-wrapped packages
+
+The user clarified that the icons which did not move were games still displayed as gift-wrapped packages, and then unwrapped them. This confirms they were temporary HOME presentation/package records rather than ordinary cataloged title-position records. RC16 correctly did not mutate those unknown non-title model records.
+
+Do not add special wrapped-package sorting based on the current non-title IDs: the state is temporary, record identity is not proven stable, and the packages become normal sortable titles after unwrapping. Next test should rerun RC16 Before+A-Z with Collapse Gaps ON now that all packages are unwrapped. Expected result: the newly normal titles join the catalog and compacted range; compare request/title count and verify live/reboot placement. If gaps remain after that, log only the specific missing ordinary records.
