@@ -3977,3 +3977,15 @@ The collapse choice is passed explicitly into the background sorter and recorded
 Deployment: active `H:\luma\payloads\LumaHome010RC16.firm`; SHA-256 `273AD099649E5B2CC514A834536289F75205F2C474666E754DA901AD5543549F`; RC15 preserved as `LumaHome010RC15-STABLE-BIDIRECTIONAL.firm`; root firmware unchanged.
 
 Test order: boot and confirm RC16; set Before+A-Z and Collapse Gaps ON; apply once; verify folder is first, all top-level gaps are removed, folder contents are A-Z with no gaps, and HOME remains responsive; power off normally, reboot, verify persistence, then reinsert. Do not test After until this first compacting transaction is audited.
+
+## 2026-08-15 — RC16 gap collapse persistence succeeds; special icons remain
+
+User result: sort succeeded; gaps did not close live; after reboot most gaps closed, but the user's described "unwrapped games" did not move.
+
+Logs prove the serialized compaction itself is exact: folder 0 moved 205→13; all 168 top-level cataloged titles were assigned contiguous positions 14–181; all five folder members were assigned 0–4. Targeted Launcher commit wrote/verified once and returned 0. Shutdown committed. Reboot audit reports byte mismatches 0 and position mismatches 0. No crash.
+
+The live model explains the partial visual update: all 173 desired title records were found in the full model, but the inline map contained only 162 of 168 top-level records and still exposed five folder-member records. It changed 148 inline entries. The indirect map contained all 173 records, moved folder record 360 from 205 to 13, and needed no additional title permutation. Therefore the current live updater cannot close gaps for six top-level records absent from the active inline page/model.
+
+Any icons still unmoved after reboot are outside the 173 ordinary serialized title records whose positions audit exact. They may be HOME's wrapped/present or another special icon state; do not blindly treat the remaining non-title records as titles. Next diagnostic should log the six top-level records missing from inline plus the remaining special model records and correlate them with a screenshot/precise wrapped-vs-unwrapped description before mutating them.
+
+RC16 remains installed. Collapse OFF remains the RC15-compatible behavior; Collapse ON is proven persistent for ordinary titles and folder contents, but live redraw and special-icon coverage are partial.
