@@ -4153,3 +4153,15 @@ The user challenged three assumptions from RC24. Treat the corrections below as 
 3. Record 205 is not proven to be a coordinate-14 proxy. Wrapped packages can occur anywhere. The log proves only that a blank/special live record was at map coordinate 14 during that snapshot and displaced an ordinary desired record. It does not prove package state belongs to coordinate 14 or that record 205 is a permanent proxy class. Identify the record-to-title/package association and native object behavior before mutating or excluding it.
 
 Consequences: pause extension of RC24's hard-coded DSi aliases and origin-13 compaction. RC22 remains the last architecture-neutral safety milestone (post-sort changes preserved), though its inventory is incomplete. The next development step is a generic read-only visible-object inventory: for every map coordinate and record, log title ID/type, model flags, backing Launcher/SD slot, folder membership, package/wrapped state indicators, and display-name source. Compare that inventory before/after manually moving system icons and before/after wrapping/unwrapping. Sorting should then operate on discovered movable objects and discovered available coordinates, not media-type or coordinate assumptions.
+
+## 2026-08-17 — RC25 generic visible-object inventory
+
+RC25 begins the corrected architecture with a non-mutating inventory routine; existing RC24 sort behavior is otherwise unchanged. During Apply, after the current SD and Launcher sources have been validated and the live model is discovered but before live-map permutation, it writes `/3ds/LumaHome/object-inventory-rc25.csv`.
+
+The inventory covers all 360 top-level coordinates, including empty, duplicate, system, package, folder, SD, NAND, and DSi representations. Each row records coordinate; inline and indirect record index; model-derived 64-bit title ID; words 2–7 and 14; matching SD slot/position/folder; matching Launcher slot/position/folder; and catalog name source/name. Model records and the indirect map are mapped read-only at separate local windows and unmapped before normal live work. The file buffer is 128 KiB with a guarded length limit.
+
+This does not yet decide which objects are movable or remove origin 13. It supplies the evidence needed to derive those rules. A later comparison capture will be required after manually moving a system icon and after a package transition; RC25 provides the first baseline schema.
+
+Visible release `0.1.0-rc25`, runtime `1.10.1`, scan `2.4.0`. Build succeeded. Deployment: `H:\luma\payloads\LumaHome010RC25.firm`; SHA-256 `35DF61C9E88E92AB2DDABA985379E174514B7FFF4326D965B0A5AF4F2295B47D`. RC24 archived as `LumaHome010RC24-DSI-ALIASES.firm`; root firmware unchanged.
+
+Next test: boot RC25 and confirm version. Apply once with the remembered settings solely to generate the baseline inventory; stop after one Apply and reinsert the card. Do not manually rearrange before this first baseline. Inspect the CSV for object classes, coordinate ownership, the two DSi entries, folder record, and blank/package records before choosing the safest method for a second comparison capture.
