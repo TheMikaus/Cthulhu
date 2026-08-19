@@ -4165,3 +4165,15 @@ This does not yet decide which objects are movable or remove origin 13. It suppl
 Visible release `0.1.0-rc25`, runtime `1.10.1`, scan `2.4.0`. Build succeeded. Deployment: `H:\luma\payloads\LumaHome010RC25.firm`; SHA-256 `35DF61C9E88E92AB2DDABA985379E174514B7FFF4326D965B0A5AF4F2295B47D`. RC24 archived as `LumaHome010RC24-DSI-ALIASES.firm`; root firmware unchanged.
 
 Next test: boot RC25 and confirm version. Apply once with the remembered settings solely to generate the baseline inventory; stop after one Apply and reinsert the card. Do not manually rearrange before this first baseline. Inspect the CSV for object classes, coordinate ownership, the two DSi entries, folder record, and blank/package records before choosing the safest method for a second comparison capture.
+
+## 2026-08-18 — RC25 baseline findings; RC26 layered inventory and ID lookup
+
+RC25 produced a 45,229-byte, 360-coordinate inventory. It proves coordinates 0–12 contain ordinary Launcher-backed system titles with catalog names and explicit Launcher positions; they are not semantically fixed by coordinate. Coordinate 1 was a blank record in this snapshot. It also shows inline and indirect layers can name different records at the same coordinate (for example coordinate 13 inline title versus indirect folder), so RC25's single preferred identity was insufficient.
+
+RC25 shutdown failed `ffffff8c` (`-116`) after the folder write. The targeted DSi plan cached Launcher slots from Apply, but HOME had changed the slot arrangement before shutdown. This disproves stable-slot identity. RC26 searches all 360 current Launcher title-ID entries at shutdown, requires exactly one exact 64-bit ID match, and derives the position offset from that current slot. The plan's old slot is diagnostic only. It still writes and verifies only two position bytes.
+
+RC26 inventory format 2 retains the original coordinate summary and appends 720 layered rows: one inline and one indirect row for every coordinate. Each layered row independently resolves its record ID, model words 4/14, SD and Launcher backing slot/position/folder, and catalog name. Output is `/3ds/LumaHome/object-inventory-rc26.csv`. This prevents folder, package, system, and title identities from being conflated when layers diverge.
+
+Visible release `0.1.0-rc26`, runtime `1.10.2`, scan `2.4.1`. Build succeeded. Deployment: `H:\luma\payloads\LumaHome010RC26.firm`; SHA-256 `661C8D934F41F6D33A9DA78790919E0CD150B37EE8A960E8CC337470C8263E8B`. RC25 archived as `LumaHome010RC25-INVENTORY-V1.firm`; root firmware unchanged.
+
+Next test: boot RC26, confirm version, and Apply once without a manual rearrangement. Reinsert after normal power-off/reboot. Required checks: targeted Launcher commit should verify folder + both DSi position writes with result 0, and inventory v2 should contain complete inline/indirect layered sections. Do not perform the system-icon movement comparison until this corrected baseline is inspected.
