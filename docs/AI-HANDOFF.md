@@ -4201,3 +4201,15 @@ RC28 first attempts the validated file read. If HOME has it locked, capture call
 Visible release `0.1.0-rc28`, runtime `1.10.4`, scan `2.4.3`. Build succeeded. Deployment: `H:\luma\payloads\LumaHome010RC28.firm`; SHA-256 `254EA5B2D5B8CE585ED1D266DA575E0187BAB81679C574C0295370F1418E4AFF`. RC27 archived as `LumaHome010RC27-CAPTURE-NO-LAUNCHER-FALLBACK.firm`; root firmware unchanged.
 
 Next test: leave the manually moved system icon where it is, boot RC28, open overlay, press X only, and verify `INVENTORY SAVED / NO SORT APPLIED`. Reinsert immediately. Do not Apply or move another object; the comparison must isolate the single existing manual move against RC26.
+
+## 2026-08-18 — RC28 false-success zero-address scan; RC29 SD discovery
+
+RC28 reported capture success and its Launcher fallback succeeded (`file=c92044e7`, resident result 0, address `346bf208`, five matches), but no object inventory was created. The live-map report exposed `raw=0`, `processed=0`: capture had not run SD runtime discovery. The scanner then compared every memory word against zero, logged 96 false raw references in the first 4 KiB, hit its reference cap, and ended with `icon_owner=0`, `icon_model=0`. RC28 incorrectly treated that as success.
+
+RC29 runs the existing validated `DiscoverSdRuntime` before Launcher discovery, records the actual raw/processed addresses in the globals used by the scan, and adds defensive nonzero guards to raw/grid reference comparisons. After scan, `iconOwner==0` is failure `-123`; success can no longer be reported without reaching the icon model/inventory path.
+
+The RC29 capture report adds SD discovery result and discovered raw/processed addresses. Output filenames and visible versions are RC29. No sort behavior change.
+
+Visible release `0.1.0-rc29`, runtime `1.10.5`, scan `2.4.4`. Build succeeded. Deployment: `H:\luma\payloads\LumaHome010RC29.firm`; SHA-256 `B4446D254ABAFACEA401091CE321E4F2891174B0AFC07938DB4C95027602606C`. RC28 archived as `LumaHome010RC28-ZERO-ADDRESS-SCAN.firm`; root firmware unchanged.
+
+Next test remains isolated: leave the manually moved system icon unchanged, boot RC29, press X only, confirm inventory saved/no sort, and reinsert. A valid result requires `capture-report-rc29.txt` result 0 with nonzero raw/processed addresses and `object-inventory-rc29.csv` present.
