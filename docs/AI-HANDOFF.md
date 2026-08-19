@@ -4177,3 +4177,15 @@ RC26 inventory format 2 retains the original coordinate summary and appends 720 
 Visible release `0.1.0-rc26`, runtime `1.10.2`, scan `2.4.1`. Build succeeded. Deployment: `H:\luma\payloads\LumaHome010RC26.firm`; SHA-256 `661C8D934F41F6D33A9DA78790919E0CD150B37EE8A960E8CC337470C8263E8B`. RC25 archived as `LumaHome010RC25-INVENTORY-V1.firm`; root firmware unchanged.
 
 Next test: boot RC26, confirm version, and Apply once without a manual rearrangement. Reinsert after normal power-off/reboot. Required checks: targeted Launcher commit should verify folder + both DSi position writes with result 0, and inventory v2 should contain complete inline/indirect layered sections. Do not perform the system-icon movement comparison until this corrected baseline is inspected.
+
+## 2026-08-18 — RC26 baseline clean; RC27 true read-only capture command
+
+RC26 validation passed: targeted Launcher commit wrote/verified one folder and two DSi titles, result 0; shutdown merge matched 173 with 173 position writes, result 0; persistent SD audit has zero byte and position mismatches. Inventory v2 is 106,224 bytes with 360 inline and 360 indirect rows.
+
+Baseline findings: desired model has 169 top-level and six folder records with no missing full-model identity. Inline update remains partial (168 changes), while indirect needed zero changes after reboot. TWiLight and its booter are correctly present in the indirect layer at coordinates 172/173, but stale inline copies occur at 187/15. Across 360 coordinates, 175 inline/indirect record indices differ. This confirms comparison capture must not invoke sorting.
+
+RC27 adds X `CAPTURE` to the overlay. It opens and atomically pauses HOME, reads/validates current SD and Launcher layouts, constructs a read-only identity grid including all currently positioned Launcher titles, enables probe-only mode, and runs the inventory/scan without any inline, indirect, folder, SaveData, or Launcher mutation. The panel reports `INVENTORY SAVED / NO SORT APPLIED`. A remains the existing mutating Apply command.
+
+RC27 writes `/3ds/LumaHome/object-inventory-rc27.csv` and the normal RC27 live-map report. Visible release `0.1.0-rc27`, runtime `1.10.3`, scan `2.4.2`. Build succeeded. Deployment: `H:\luma\payloads\LumaHome010RC27.firm`; SHA-256 `EEC008B16945EBB6DC1C8FC248A2C9A6FB358723925F009B1BCF3737B6C23060`. RC26 archived as `LumaHome010RC26-LAYERED-BASELINE.firm`; root firmware unchanged.
+
+Next comparison test: boot RC27. Manually move one recognizable Launcher-backed system icon (for example Camera) to an obviously different coordinate without sorting. Open overlay and press X, not A. Confirm `INVENTORY SAVED / NO SORT APPLIED`, then reinsert the card without applying a sort. Compare RC27 layered rows and backing positions against the RC26 baseline to identify which maps/backing fields HOME changes for a manual system-icon move.
