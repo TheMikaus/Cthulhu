@@ -4189,3 +4189,15 @@ RC27 adds X `CAPTURE` to the overlay. It opens and atomically pauses HOME, reads
 RC27 writes `/3ds/LumaHome/object-inventory-rc27.csv` and the normal RC27 live-map report. Visible release `0.1.0-rc27`, runtime `1.10.3`, scan `2.4.2`. Build succeeded. Deployment: `H:\luma\payloads\LumaHome010RC27.firm`; SHA-256 `EEC008B16945EBB6DC1C8FC248A2C9A6FB358723925F009B1BCF3737B6C23060`. RC26 archived as `LumaHome010RC26-LAYERED-BASELINE.firm`; root firmware unchanged.
 
 Next comparison test: boot RC27. Manually move one recognizable Launcher-backed system icon (for example Camera) to an obviously different coordinate without sorting. Open overlay and press X, not A. Confirm `INVENTORY SAVED / NO SORT APPLIED`, then reinsert the card without applying a sort. Compare RC27 layered rows and backing positions against the RC26 baseline to identify which maps/backing fields HOME changes for a manual system-icon move.
+
+## 2026-08-18 — RC27 capture failed on locked Launcher; RC28 resident fallback
+
+The user moved the test icon and pressed X, but capture failed. Runtime recorded exact result `c92044e7`; no RC27 inventory was created and no crash occurred. The failure was opening `Launcher.dat` while HOME owned the archive. This read-only path had omitted the resident-Launcher fallback already proven in Apply.
+
+RC28 first attempts the validated file read. If HOME has it locked, capture calls the existing Launcher runtime discovery, maps the discovered region read-only, reconstructs file alignment by copying the resident object to offset +8, unmaps it, and validates the result before inventory. HOME remains paused for a consistent snapshot and probe-only mode still prevents model mutations.
+
+`/3ds/LumaHome/capture-report-rc28.txt` now records file result, resident discovery/map result, address, match count, unlock result, and final result, so another capture failure is self-localizing. Inventory/live-map filenames and visible versions are RC28.
+
+Visible release `0.1.0-rc28`, runtime `1.10.4`, scan `2.4.3`. Build succeeded. Deployment: `H:\luma\payloads\LumaHome010RC28.firm`; SHA-256 `254EA5B2D5B8CE585ED1D266DA575E0187BAB81679C574C0295370F1418E4AFF`. RC27 archived as `LumaHome010RC27-CAPTURE-NO-LAUNCHER-FALLBACK.firm`; root firmware unchanged.
+
+Next test: leave the manually moved system icon where it is, boot RC28, open overlay, press X only, and verify `INVENTORY SAVED / NO SORT APPLIED`. Reinsert immediately. Do not Apply or move another object; the comparison must isolate the single existing manual move against RC26.
