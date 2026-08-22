@@ -4291,3 +4291,15 @@ RC33 keeps RC32's proven combined live grid unchanged but persists SD and Launch
 Visible release `0.1.0-rc33`, runtime `1.10.9`, scan `2.6.1`. Build succeeded after starting the existing Docker Desktop/toolchain. Deployment: `G:\luma\payloads\LumaHome010RC33.firm`; SHA-256 `5F25C479CCA43A06CBC76461533DACC64AD81888E32BB65B35ACA8F031141B56`. RC32 was removed from the SD to retain only GodMode9 plus the current payload. Root firmware remains unchanged.
 
 Focused RC33 test: boot and verify RC33. Apply the same remembered A-Z / folder Before / Collapse ON / column-major sort exactly once. Confirm live sorting, folder placement, no gifts, responsive input, and normal power-off. Reboot and confirm no gifts and a usable layout, then reinsert. The primary diagnostic target is postboot `persistence-audit.txt`: expected/current SD position mismatches should fall from 167 to zero (or reveal the remaining native normalization rule) while the live map should retain nonzero exact-coordinate changes.
+
+## 2026-08-21 — RC33 behavior passed; RC34 maps HOME's remaining normalization
+
+User reported RC33 all good: live sorting, reboot, package presentation, and general behavior passed. Logs show transaction result 0, 187 title mutations, one folder, 14 Launcher titles, 167 SD titles, exact live updates of 187 inline and 362 indirect entries, no missing desired identity, targeted Launcher verification 15/15, and a clean 173-title shutdown merge.
+
+The RC33 postboot audit did not become byte-stable. HOME rewrote 166 of 167 SD position fields (`position_mismatches=166`) while the user-visible layout remained correct and resident raw/processed buffers exactly matched HOME's current extdata. Media-local density is therefore safe and package-correct, but HOME applies another native normalization or serialization order at boot. Do not regress RC33's behavior in pursuit of a zero audit without first identifying that mapping.
+
+RC34 is behavior-identical to RC33 and expands only the read-only postboot audit. `persistence-audit.txt` now has a `[POSITION_NORMALIZATION]` CSV section for every expected SD identity: exact title ID, expected/current slot, expected/current position, expected/current folder, and exact current identity-match count. The report buffer was moved to a 32 KiB static allocation. This will reveal whether HOME applies an affine offset, traversal conversion, slot-order permutation, or another identity-stable mapping. No Apply, live-map, persistence, hook, or input behavior changed.
+
+Visible release `0.1.0-rc34`, runtime `1.11.0`, scan `2.6.2`. Deployment: `G:\luma\payloads\LumaHome010RC34.firm`; SHA-256 `435885BEAE90AD961F85F318202F644C935B60E274DC3D375D9BD5311D6540CB`. RC33 was removed from the SD to keep only GodMode9 and RC34. Root firmware remains unchanged.
+
+Focused RC34 test: run the same known-good A-Z / folder Before / Collapse ON sort once, normal power-off/reboot, verify behavior remains good, and reinsert. The functional result should match RC33. The new per-title audit section is the sole diagnostic target and should be analyzed before changing persistence again.
