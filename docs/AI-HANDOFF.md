@@ -4365,3 +4365,11 @@ The second failure was folder discovery. The current SD layout still has six tit
 RC38 retains all RC37 full-span memory validation and RC36 shutdown-only Launcher persistence. Visible release `0.1.0-rc38`, runtime `1.11.4`, scan `2.8.1`. Build succeeded. Deployment: `G:\luma\payloads\LumaHome010RC38.firm`; SHA-256 `5C17F6423B7D6B4181E3CE5D4FF20C37FF1AE35AA2146774D1FA2B53A437AE72`. RC37 was removed; only GodMode9 and RC38 remain. Root firmware hash remains unchanged.
 
 Focused RC38 test: boot and verify RC38. With Collapse ON, select the desired folder placement and apply one sort. Confirm whether the folder moves live and whether sorting completes without an error. Do not launch an application. Power off normally, reboot RC38 once, verify folder placement/presentation, then reinsert. If Apply fails, reinsert immediately without retrying; inspect `[FOLDER_METADATA_FALLBACK]`, folder mutations, and the RC38 live-map boundary fields.
+
+## 2026-08-21 — RC38 folder move succeeded; RC39 fixes stale visible panel version
+
+User result: RC38 moved the folder and displayed no error, confirming that cross-store duplicate suppression during Collapse and active-folder metadata recovery passed the immediate live test. The user also reported that the menu version was not updated. Source inspection found the panel header was independently hardcoded as `LUMAHOME 0.1 RC29`; sorter/log/runtime/Rosalina strings had been bumped, but the actual L+Y overlay header had not.
+
+RC39 introduces `CTH_VISIBLE_RELEASE` in the overlay renderer and displays `LUMAHOME 0.1 RC39`. All other visible/log version surfaces were bumped consistently: release `0.1.0-rc39`, runtime `1.11.5`, scan `2.8.2`, and the Rosalina status entry. No sorting, folder, memory-validation, hook, persistence, or rendering behavior changed from RC38.
+
+Build succeeded. Deployment: `G:\luma\payloads\LumaHome010RC39.firm`; SHA-256 `9F58276B54C89B767F3677C4FDDACD9A7550D7F037543EA52C2006A37227D100`. RC38 was removed; only GodMode9 and RC39 remain. Root firmware remains unchanged. Immediate verification: boot RC39, open L+Y, and confirm the top panel line visibly reads `LUMAHOME 0.1 RC39`. Then continue the pending RC38 persistence portion: normal power-off/reboot and confirm the successfully moved folder remains in place before reinserting.
