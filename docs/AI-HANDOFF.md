@@ -4373,3 +4373,7 @@ User result: RC38 moved the folder and displayed no error, confirming that cross
 RC39 introduces `CTH_VISIBLE_RELEASE` in the overlay renderer and displays `LUMAHOME 0.1 RC39`. All other visible/log version surfaces were bumped consistently: release `0.1.0-rc39`, runtime `1.11.5`, scan `2.8.2`, and the Rosalina status entry. No sorting, folder, memory-validation, hook, persistence, or rendering behavior changed from RC38.
 
 Build succeeded. Deployment: `G:\luma\payloads\LumaHome010RC39.firm`; SHA-256 `9F58276B54C89B767F3677C4FDDACD9A7550D7F037543EA52C2006A37227D100`. RC38 was removed; only GodMode9 and RC39 remain. Root firmware remains unchanged. Immediate verification: boot RC39, open L+Y, and confirm the top panel line visibly reads `LUMAHOME 0.1 RC39`. Then continue the pending RC38 persistence portion: normal power-off/reboot and confirm the successfully moved folder remains in place before reinserting.
+
+## 2026-08-21 — RC39 repeated live folder sort is stable
+
+User ran the sort twice. The first application moved the folder to the requested position; the second application of the same sort left the folder in that position rather than moving it again or drifting. No error was reported. This passes live folder placement and same-request idempotence for RC39. The remaining check for this iteration is shutdown/reboot persistence: after a normal power-off and RC39 reboot, verify the folder remains at the requested position and its contents/name remain intact. Do not infer persistence from the second live sort alone.
