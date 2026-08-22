@@ -4303,3 +4303,7 @@ RC34 is behavior-identical to RC33 and expands only the read-only postboot audit
 Visible release `0.1.0-rc34`, runtime `1.11.0`, scan `2.6.2`. Deployment: `G:\luma\payloads\LumaHome010RC34.firm`; SHA-256 `435885BEAE90AD961F85F318202F644C935B60E274DC3D375D9BD5311D6540CB`. RC33 was removed from the SD to keep only GodMode9 and RC34. Root firmware remains unchanged.
 
 Focused RC34 test: run the same known-good A-Z / folder Before / Collapse ON sort once, normal power-off/reboot, verify behavior remains good, and reinsert. The functional result should match RC33. The new per-title audit section is the sole diagnostic target and should be analyzed before changing persistence again.
+
+## 2026-08-21 — RC34 card check found no RC34 execution yet
+
+The user reinserted the card, but inspection shows RC34 has not been booted or applied yet. `G:\luma\payloads\LumaHome010RC34.firm` is present, while `runtime.txt`, `sort-transaction.txt`, `persistence-audit.txt`, object inventory, and live map all still identify RC33; no `live-map-0.1.0-rc34.txt` exists. This is stale RC33 evidence, not an RC34 failure. The RC34 test remains unchanged: boot the RC34 payload, confirm the displayed version, Apply once, normal power-off/reboot, then reinsert so the new `[POSITION_NORMALIZATION]` section can be read.
