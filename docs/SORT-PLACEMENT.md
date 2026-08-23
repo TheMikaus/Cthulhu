@@ -104,3 +104,24 @@ layout, cursor restoration, and scroll restoration. Reading the active render
 geometry without closing/reopening HOME requires reverse-engineering a HOME
 renderer/layout object or hook; it cannot be implemented solely through a
 documented SDK call.
+
+## RC47 active-renderer observer
+
+Offline disassembly of `runtime/.analysis/HomeMenu-USA-code.bin` located the
+native synchronization path. At runtime address `0x002958D8`, HOME loads
+`Launcher.dat[0xB51]` and stores the value in a controller cache at
+`controller+0x11C4`. In the corresponding inner controller, runtime address
+`0x0021D428` reads the active cached rows-minus-one from `controller+0x1C4`,
+compares it with `Launcher.dat[0xB51]`, and writes it back when different.
+
+RC47 observes the read at `0x0021D428`. The hook replays the displaced
+`ldr r1, [r4, #0x1C4]`, publishes the value at shared-channel offset `0x10C`,
+increments generation at `0x110`, and resumes at `0x0021D42C`. It does not
+change HOME's controller or Launcher data.
+
+For row-major Apply, placement now uses the captured renderer value plus one.
+If no native observation occurred or the captured stored value is outside
+0–5, Apply fails closed with result `-125`. Column-major mode can continue to
+use the persisted row because it does not reinterpret coordinates into visual
+row order. Transactions log persisted rows, active stored value, observer
+generation, selected source, effective rows, columns, and screen capacity.
