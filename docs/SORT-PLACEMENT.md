@@ -68,3 +68,39 @@ when the enlarge/reduce buttons are pressed. Log both the Launcher-derived row
 and renderer-derived geometry in the same transaction. Placement should proceed
 only when they agree or when the renderer value has an independently validated
 mapping.
+
+## What public documentation actually exposes
+
+3dbrew documents the persisted main-menu state in `Launcher.dat`:
+
+- `0xB51` is a `u8` containing the number of HOME rows minus one. Its stored
+  range is 0–5, representing one through six rows.
+- `0xB5C` is the main-menu cursor position.
+- `0xB5E` is the horizontal scroll level. Dividing it by the row count gives
+  the number of hidden columns.
+- `0xD9A` contains 360 linear `s16` icon positions. These are explicitly not
+  X/Y pairs.
+- `0x1434 + folderId` is the row count for that folder (default two).
+- `0x1470 + folderId*2` and `0x14E8 + folderId*2` are the folder cursor and
+  horizontal-scroll values.
+
+HOME's resident Launcher object used by this project starts at file offset +8,
+so the persisted main row byte is read at resident-object offset `0xB49`.
+
+No public 3dbrew, Nintendo SDK, libctru, NS, or APT documentation located in
+this project exposes a command for the renderer's immediately active zoom,
+visible column count, icon pitch, or viewport width. Nintendo documentation
+confirms six enlarge/reduce states and that the smallest icons can show 60 at
+once, but does not define a machine-readable render-state interface.
+
+An older published HOME layout reference enumerates the visual states as
+1x3, 2x3, 3x5, 4x6, 5x8, and 6x10. This is useful historical UI information,
+not proof that a particular live resident object is synchronized with the
+currently drawn frame. RC45/RC46 screenshots and transaction logs demonstrate
+that using the selected resident Launcher's row byte as that proof is unsafe.
+
+Therefore the documented read path is sufficient for persistence, reboot
+layout, cursor restoration, and scroll restoration. Reading the active render
+geometry without closing/reopening HOME requires reverse-engineering a HOME
+renderer/layout object or hook; it cannot be implemented solely through a
+documented SDK call.
